@@ -5,18 +5,20 @@
 迫りくる隕石の「よみ」をタイプして撃ち落とす、JLPT学習者のためのタイピングゲーム。<br>
 A typing game for learners of Japanese: type the reading on each meteor's word card before it reaches the shield.
 
+**[▶ ブラウザで遊ぶ · Play in your browser](https://kotoba-meteor.pages.dev)**
+
 <img src="docs/images/play.gif" width="800" alt="Three meteors carrying word cards approach a planet. Typing each reading fires a laser and destroys the meteor, and its reading and meaning float up.">
 
 </div>
 
 ## 遊ぶ · Play
 
-インストールもビルドも不要で、ブラウザだけで動きます。キーボードのあるパソコンで遊んでください。
+**https://kotoba-meteor.pages.dev** をパソコンのブラウザで開くだけで遊べます。インストールは不要です。キーボードが必要です。
 
-1. このリポジトリを **Code → Download ZIP** でダウンロードする（または `git clone`）
-2. `docs/index.html` をブラウザで開く
+Open **https://kotoba-meteor.pages.dev** in a desktop browser. Nothing to install; a physical keyboard is required.
 
-No install and no build step: the game is a single HTML file. Download this repository (**Code → Download ZIP**, or `git clone`) and open `docs/index.html` in a desktop browser. A physical keyboard is required.
+オフラインで遊ぶときは、このリポジトリを **Code → Download ZIP** でダウンロードし（または `git clone`）、`docs/index.html` を開いてください。ゲームは1つのHTMLファイルです。<br>
+To play offline, download this repository (**Code → Download ZIP**, or `git clone`) and open `docs/index.html`. The whole game is one HTML file.
 
 ## 特長 · Features
 
@@ -94,6 +96,9 @@ python3 build.py            # src/ → docs/index.html
 python3 build.py --check    # docs/index.html が最新か確認 · fail if docs/index.html is stale
 node tests/engine.test.js   # 全単語がローマ字（別つづり含む）とJISかなで打てるか · every word is typeable both ways
 ```
+
+公開は Cloudflare Pages です（ビルドコマンドなし、出力ディレクトリ `docs`）。`main` に push すると自動で更新されます。<br>
+The site is hosted on Cloudflare Pages with no build command and `docs` as the output directory, so every push to `main` redeploys it.
 
 ブラウザでの自動プレイテスト（Playwright）· Browser play-through test:
 

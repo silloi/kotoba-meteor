@@ -26,6 +26,23 @@ FAVICON = (
 )
 
 
+SITE_URL = "https://kotoba-meteor.pages.dev/"
+# Link previews (Open Graph / Twitter card) and the canonical address for the hosted copy.
+SITE_META = f"""<link rel="canonical" href="{SITE_URL}">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="ことばメテオ">
+<meta property="og:title" content="ことばメテオ · Kotoba Meteor">
+<meta property="og:description" content="迫りくる隕石の「よみ」をタイプして撃ち落とす、JLPT学習者向けタイピングゲーム。A typing game for learners of Japanese (JLPT N5–N1).">
+<meta property="og:url" content="{SITE_URL}">
+<meta property="og:image" content="{SITE_URL}og.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="ことばメテオのタイトル画面。隕石の単語カード「外国人」にレーザーが命中している">
+<meta property="og:locale" content="ja_JP">
+<meta name="twitter:card" content="summary_large_image">
+"""
+
+
 def page() -> str:
     """The page as authored: head elements first, then the body markup and scripts."""
     html = (SRC / "index.html").read_text(encoding="utf-8")
@@ -53,6 +70,7 @@ def standalone(body: str) -> str:
         '<!doctype html>\n<html lang="ja">\n<head>\n<meta charset="utf-8">\n'
         '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">\n'
         f'<link rel="icon" href="{FAVICON}">\n'
+        + SITE_META
         + head.rstrip() + "\n</head>\n<body>\n" + sep + rest.rstrip() + "\n</body>\n</html>\n"
     )
 
