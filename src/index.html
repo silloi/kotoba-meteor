@@ -1,0 +1,215 @@
+<title>ことばメテオ</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="JLPT N5–N1 vocabulary typing game: shoot down meteors by typing the reading.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&family=Chakra+Petch:wght@500;600;700&family=Dela+Gothic+One&family=Klee+One:wght@600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Yuji+Syuku&text=%E7%A7%80%E5%84%AA%E8%89%AF%E5%8F%AF%E4%B8%8D&display=swap">
+<link rel="stylesheet" href="style.css">
+
+<canvas id="cv" aria-hidden="true"></canvas>
+
+<div id="ui" lang="ja">
+
+  <!-- TITLE -->
+  <section class="screen" id="scr-title" hidden>
+    <div class="title-wrap">
+      <div class="brand">
+        <p class="eyebrow">JLPT Typing Defense · N5–N1</p>
+        <h1 class="logo"><span class="l1">ことば</span><span class="l2">メテオ</span></h1>
+        <p class="lede">迫りくる隕石の「よみ」をタイプして撃ち落とそう。<span class="en">Type the reading on each meteor's word card before it reaches the shield.</span></p>
+      </div>
+      <nav class="menu" aria-label="Main menu">
+        <button class="mi primary" type="button" data-act="meteor"><kbd>1</kbd><span class="mi-t"><b>メテオ迎撃</b><small>Meteor Defense</small></span><span class="mi-go" aria-hidden="true">▶</span></button>
+        <button class="mi" type="button" data-act="practice"><kbd>2</kbd><span class="mi-t"><b>れんしゅう</b><small>Practice one card at a time</small></span></button>
+        <button class="mi" type="button" data-act="weak"><kbd>3</kbd><span class="mi-t"><b>にがて単語</b><small>Review weak words</small></span><span class="badge" id="weak-badge">0</span></button>
+        <button class="mi" type="button" data-act="words"><kbd>4</kbd><span class="mi-t"><b>単語リスト</b><small>Word list</small></span></button>
+        <button class="mi" type="button" data-act="settings"><kbd>5</kbd><span class="mi-t"><b>せってい</b><small>Settings</small></span></button>
+        <button class="mi" type="button" data-act="howto"><kbd>6</kbd><span class="mi-t"><b>あそびかた</b><small>How to play</small></span></button>
+      </nav>
+      <p class="status" id="title-status"></p>
+      <p class="touch-note">キーボードのあるパソコンで遊んでください。<span class="en">This game needs a physical keyboard.</span></p>
+    </div>
+  </section>
+
+  <!-- LEVEL SELECT -->
+  <section class="screen" id="scr-select" hidden>
+    <div class="panel">
+      <header class="panel-head">
+        <button class="back" type="button" data-back>← もどる <small>Back</small></button>
+        <h2 id="sel-title">メテオ迎撃 <small>Meteor Defense</small></h2>
+      </header>
+      <div class="select-body">
+        <div class="levels" id="levels" role="radiogroup" aria-label="Level"></div>
+        <div class="options">
+          <div class="opts" id="sel-opts"></div>
+          <button class="launch" type="button" id="launch"><span>発進</span><small>LAUNCH ⏎</small></button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- WEAK WORDS -->
+  <section class="screen" id="scr-weak" hidden>
+    <div class="panel">
+      <header class="panel-head">
+        <button class="back" type="button" data-back>← もどる <small>Back</small></button>
+        <h2>にがて単語 <small>Weak words</small></h2>
+      </header>
+      <p class="note">シールドに当たった単語や、ヒントを使った単語がここに集まります。ヒントなしで正しく打つと消えていきます。<span class="en">Words that hit the shield or needed a hint collect here. Type them right without a hint and they clear.</span></p>
+      <div class="row-actions" id="weak-actions">
+        <button class="btn primary" type="button" data-act="weak-meteor">メテオで復習 <small>Meteor review</small></button>
+        <button class="btn" type="button" data-act="weak-practice">れんしゅうで復習 <small>Practice review</small></button>
+      </div>
+      <ul class="wordrows" id="weak-list"></ul>
+    </div>
+  </section>
+
+  <!-- WORD LIST -->
+  <section class="screen" id="scr-words" hidden>
+    <div class="panel">
+      <header class="panel-head">
+        <button class="back" type="button" data-back>← もどる <small>Back</small></button>
+        <h2>単語リスト <small>Word list</small></h2>
+      </header>
+      <div class="words-tools">
+        <div class="tabs" id="word-tabs" role="tablist" aria-label="Level"></div>
+        <label class="search" for="word-search"><span class="sr">Search</span>
+          <input id="word-search" type="search" placeholder="検索 · 漢字 / かな / English" autocomplete="off" spellcheck="false">
+        </label>
+      </div>
+      <p class="note small" id="word-count"></p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th><span class="sr">Listen</span></th><th>単語 <small>Word</small></th><th>よみ <small>Reading</small></th><th>ローマ字</th><th>意味 <small>Meaning</small></th><th>記録 <small>Record</small></th></tr></thead>
+          <tbody id="word-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- SETTINGS -->
+  <section class="screen" id="scr-settings" hidden>
+    <div class="panel narrow">
+      <header class="panel-head">
+        <button class="back" type="button" data-back>← もどる <small>Back</small></button>
+        <h2>せってい <small>Settings</small></h2>
+      </header>
+      <div class="opts settings-grid" id="settings-opts"></div>
+      <div class="danger-zone">
+        <div><b>記録をリセット</b><small>Clears scores, weak words and learned spellings in this browser.</small></div>
+        <button class="btn danger" type="button" id="reset-btn">リセット <small>Reset</small></button>
+      </div>
+      <p class="note small">記録はこのブラウザの中だけに保存されます。<span class="en">Progress is saved in this browser only.</span></p>
+    </div>
+  </section>
+
+  <!-- HOW TO PLAY -->
+  <section class="screen" id="scr-howto" hidden>
+    <div class="panel narrow">
+      <header class="panel-head">
+        <button class="back" type="button" data-back>← もどる <small>Back</small></button>
+        <h2>あそびかた <small>How to play</small></h2>
+      </header>
+      <ol class="howto">
+        <li><b>単語カードの「よみ」をタイプ</b><span>隕石には単語カードがついています。よみを最後まで打つとレーザーで爆破。</span><span class="en">Each meteor carries a word card. Type its reading to the end and the laser destroys it.</span></li>
+        <li><b>ふりがなは後から出る</b><span>「あとから」設定では数秒後にふりがなが出ます。出る前に打てばスコア ×1.5。</span><span class="en">With Delayed furigana the reading appears after a few seconds. Type it before then for a ×1.5 bonus.</span></li>
+        <li><b>シールドを守る</b><span>隕石がシールドに当たると1ダメージ。5回で終わり。3ウェーブのあとに巨大隕石が来ます。</span><span class="en">A meteor that reaches the shield costs one cell; five and the mission ends. A giant meteor follows three waves.</span></li>
+        <li><b>まちがえた単語は復習</b><span>当たった単語・ヒントを使った単語は「にがて単語」に入り、次から出やすくなります。</span><span class="en">Missed and hinted words go to Weak words and come up more often.</span></li>
+      </ol>
+      <div class="howto-keys">
+        <span><kbd>Space</kbd> ヒント <small>Hint</small></span>
+        <span><kbd>Backspace</kbd> ねらいを解除 <small>Release target</small></span>
+        <span><kbd>Esc</kbd> ポーズ <small>Pause</small></span>
+      </div>
+      <h3>ローマ字のコツ <small>Romaji tips</small></h3>
+      <div class="table-wrap plain">
+        <table class="tips">
+          <tbody>
+            <tr><td>ん</td><td><code>nn</code> · 子音の前は <code>n</code> でもOK</td><td class="tip-en">nn; a single n works before most consonants (kanji)</td></tr>
+            <tr><td>っ</td><td>次の子音を重ねる <code>kk</code> <code>tt</code> <code>ss</code> · <code>xtu</code></td><td class="tip-en">double the next consonant, or xtu / ltu</td></tr>
+            <tr><td>しゃ ちゃ じゃ</td><td><code>sha</code> <code>cha</code> <code>ja</code> · <code>sya</code> <code>tya</code> <code>zya</code></td><td class="tip-en">both spelling systems are accepted</td></tr>
+            <tr><td>ー</td><td><code>-</code> (マイナスキー)</td><td class="tip-en">the minus key</td></tr>
+            <tr><td>を · づ · ぢ</td><td><code>wo</code> · <code>du</code> · <code>di</code></td><td class="tip-en">as an IME expects them</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="note small">かな入力は日本語(JIS)配列キーボード用です。濁音は「か」+「゛」のように2打で入力します。<span class="en">Kana input follows the Japanese JIS layout; voiced kana take two keys, e.g. か then ゛.</span></p>
+    </div>
+  </section>
+
+  <!-- PRACTICE -->
+  <section class="screen" id="scr-practice" hidden>
+    <div class="practice">
+      <header class="p-head">
+        <button class="back" type="button" data-act="practice-quit">✕ やめる <small>Esc</small></button>
+        <span class="p-level" id="p-level"></span>
+        <span class="p-stats">
+          <span><small>WORD</small><b id="p-count">1/20</b></span>
+          <span><small>TIME</small><b id="p-time">0:00</b></span>
+          <span><small>ACC</small><b id="p-acc">100%</b></span>
+        </span>
+      </header>
+      <div class="p-progress"><i id="p-bar"></i></div>
+      <div class="p-card" id="p-card">
+        <i class="p-rule" aria-hidden="true"></i>
+        <div class="p-prompt" id="p-prompt"></div>
+        <div class="p-furi" id="p-furi"></div>
+        <div class="p-word" id="p-word"></div>
+        <div class="p-mean" id="p-mean"></div>
+        <div class="p-roma" id="p-roma"></div>
+        <svg class="p-mark" id="p-mark" viewBox="0 0 80 80" aria-hidden="true"></svg>
+      </div>
+      <p class="p-help" id="p-help"><kbd>Space</kbd> ヒント Hint · <kbd>Esc</kbd> やめる Quit</p>
+      <div class="kb" id="p-kbd" aria-hidden="true"></div>
+    </div>
+  </section>
+
+  <!-- PAUSE -->
+  <section class="screen" id="scr-pause" hidden>
+    <div class="panel pause">
+      <h2>ポーズ <small>Paused</small></h2>
+      <div class="col-actions">
+        <button class="btn primary" type="button" data-act="resume">つづける <small>Resume · Esc</small></button>
+        <button class="btn" type="button" data-act="retry">やりなおす <small>Restart</small></button>
+        <button class="btn" type="button" data-act="menu">メニューへ <small>Quit to menu</small></button>
+      </div>
+    </div>
+  </section>
+
+  <!-- RESULT -->
+  <section class="screen" id="scr-result" hidden>
+    <div class="panel result">
+      <div class="r-top">
+        <div class="stamp-wrap">
+          <div class="stamp" id="r-stamp">優</div>
+          <div class="stamp-en" id="r-grade-en">Very good</div>
+        </div>
+        <div class="r-head">
+          <p class="eyebrow" id="r-eyebrow">MISSION COMPLETE</p>
+          <h2 id="r-title">ミッション達成</h2>
+          <p class="r-msg" id="r-msg"></p>
+          <div class="r-stats" id="r-stats"></div>
+        </div>
+      </div>
+      <div class="r-review">
+        <h3 id="r-review-h">ふくしゅう <small>Review these words</small></h3>
+        <ul class="wordrows" id="r-list"></ul>
+      </div>
+      <div class="row-actions">
+        <button class="btn primary" type="button" data-act="retry">もう一度 <small>Retry · Enter</small></button>
+        <button class="btn" type="button" data-act="review-missed" id="r-review-btn">この単語をれんしゅう <small>Practice these</small></button>
+        <button class="btn" type="button" data-act="menu">メニュー <small>Menu · Esc</small></button>
+      </div>
+    </div>
+  </section>
+</div>
+
+<button id="pause-btn" type="button" hidden aria-label="Pause">❚❚ <small>Esc</small></button>
+<div id="toast" role="status" aria-live="polite" hidden></div>
+
+<script src="data.js"></script>
+<script src="engine.js"></script>
+<script src="audio.js"></script>
+<script src="game.js"></script>
+<script src="ui.js"></script>

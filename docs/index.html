@@ -1,0 +1,3894 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23070a1c'/%3E%3Cpath d='M12 8 L36 32' stroke='%23ff9d3b' stroke-width='9' stroke-linecap='round' opacity='.55'/%3E%3Ccircle cx='39' cy='36' r='14' fill='%238d8278'/%3E%3Ccircle cx='35' cy='32' r='3.5' fill='%23564c46'/%3E%3Crect x='20' y='50' width='30' height='6' rx='2' fill='%23f5efdf'/%3E%3C/svg%3E">
+<title>ことばメテオ</title>
+<meta name="description" content="JLPT N5–N1 vocabulary typing game: shoot down meteors by typing the reading.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&family=Chakra+Petch:wght@500;600;700&family=Dela+Gothic+One&family=Klee+One:wght@600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Yuji+Syuku&text=%E7%A7%80%E5%84%AA%E8%89%AF%E5%8F%AF%E4%B8%8D&display=swap">
+<style>
+/* Layout: full-bleed starfield canvas; console panels anchored left over the live demo;
+   the study card is the one centered object. One deliberate dark look (deep space). */
+:root {
+  color-scheme: dark;
+  /* palette */
+  --space: #070a1c;   /* deep space */
+  --star: #e8ecff;    /* text */
+  --beam: #6ff3ff;    /* laser, focus, progress */
+  --gold: #ffc94a;    /* score, primary action */
+  --shu: #ee4b2b;     /* 朱 vermilion: red pen, hanko stamp */
+  --paper: #f5efdf;   /* word-card paper */
+  /* derived */
+  --ink: #1c2242;
+  --pencil: #5d6584;
+  --haze: #a3acd3;
+  --dim: #7680ab;
+  --hull: rgba(12, 17, 42, 0.88);
+  --hull-solid: #0c112a;
+  --line: rgba(140, 160, 255, 0.18);
+  --line-strong: rgba(140, 160, 255, 0.36);
+  --beam-wash: rgba(111, 243, 255, 0.09);
+  --scrim: rgba(7, 10, 28, 0.72);
+  /* type */
+  --font-display: "Dela Gothic One", "BIZ UDPGothic", "Hiragino Sans", sans-serif;
+  --font-body: "BIZ UDPGothic", "Hiragino Sans", "Yu Gothic UI", "Yu Gothic", "Noto Sans JP", system-ui, sans-serif;
+  --font-card: "Klee One", "BIZ UDPGothic", "Hiragino Mincho ProN", "Yu Mincho", serif;
+  --font-hud: "Chakra Petch", "BIZ UDPGothic", ui-monospace, Menlo, Consolas, monospace;
+  --font-stamp: "Yuji Syuku", "Klee One", "Hiragino Mincho ProN", serif;
+  --radius: 12px;
+}
+
+[hidden] { display: none !important; }
+*, *::before, *::after { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  background: var(--space);
+  color: var(--star);
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.6;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+#cv { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+
+#ui {
+  position: fixed; inset: 0;
+  display: grid;
+  pointer-events: none;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.screen {
+  grid-area: 1 / 1;
+  min-width: 0; min-height: 0;
+  overflow-y: auto;
+  pointer-events: auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  padding-block: 24px;
+}
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.en { display: block; color: var(--dim); font-size: 0.86em; }
+small { font-size: 0.78em; }
+kbd {
+  font-family: var(--font-hud); font-size: 0.82em; font-weight: 600;
+  display: inline-block; min-width: 1.9em; padding: 0.05em 0.45em; text-align: center;
+  border: 1px solid var(--line-strong); border-bottom-width: 2px; border-radius: 6px;
+  color: var(--star); background: rgba(255, 255, 255, 0.04);
+}
+code { font-family: var(--font-hud); color: var(--beam); font-size: 0.95em; }
+button { font: inherit; color: inherit; }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+/* ---------- title ---------- */
+#scr-title { align-items: center; }
+#scr-title::before {
+  content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  background: linear-gradient(90deg, rgba(7, 10, 28, 0.94) 0%, rgba(7, 10, 28, 0.78) 34%, rgba(7, 10, 28, 0) 66%);
+}
+.title-wrap { width: min(100%, 470px); display: grid; gap: clamp(14px, 3.4vh, 26px); padding-left: clamp(0px, 5vw, 64px); }
+.eyebrow {
+  margin: 0; font-family: var(--font-hud); font-weight: 600; font-size: 12px;
+  letter-spacing: 0.22em; text-transform: uppercase; color: var(--beam);
+}
+.logo { margin: 6px 0 0; font-family: var(--font-display); font-weight: 400; font-size: clamp(44px, min(8.5vw, 12vh), 100px); line-height: 0.95; letter-spacing: 0.01em; }
+.logo span { display: block; }
+.logo .l2 { color: var(--gold); text-shadow: 0 0 34px rgba(255, 201, 74, 0.28); }
+.lede { margin: 14px 0 0; color: var(--haze); text-wrap: pretty; }
+.lede .en { margin-top: 4px; }
+.menu { display: grid; gap: clamp(4px, 0.8vh, 6px); }
+@media (max-height: 760px) { .mi { padding-block: 7px; } .lede { margin-top: 8px; } }
+.mi {
+  display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 14px;
+  padding: 10px 14px; text-align: left; cursor: pointer;
+  background: rgba(12, 17, 42, 0.55); border: 1px solid var(--line); border-radius: var(--radius);
+  transition: background-color 0.15s, border-color 0.15s, transform 0.15s;
+}
+.mi kbd { transition: background-color 0.15s, color 0.15s; }
+.mi-t { display: grid; line-height: 1.3; }
+.mi-t b { font-size: 17px; }
+.mi-t small { color: var(--dim); font-size: 12px; }
+.mi-go { color: var(--gold); font-size: 12px; }
+.mi:hover, .mi:focus-visible { background: var(--beam-wash); border-color: var(--beam); outline: none; }
+@media (hover: hover) and (min-width: 761px) { .mi:hover, .mi:focus-visible { transform: translateX(3px); } }
+.mi:hover kbd, .mi:focus-visible kbd { background: var(--beam); color: var(--space); border-color: var(--beam); }
+.mi.primary { border-color: rgba(255, 201, 74, 0.45); }
+.mi.primary b { color: var(--gold); }
+.badge {
+  min-width: 26px; padding: 1px 8px; border-radius: 999px; text-align: center;
+  font-family: var(--font-hud); font-size: 12px; font-weight: 700;
+  background: var(--shu); color: #fff;
+}
+.badge[data-zero] { background: rgba(255, 255, 255, 0.08); color: var(--dim); }
+.status { margin: 0; font-size: 12px; color: var(--dim); font-family: var(--font-hud); letter-spacing: 0.04em; }
+.touch-note { display: none; margin: 0; padding: 10px 12px; border: 1px solid rgba(238, 75, 43, 0.5); border-radius: 10px; color: #ffd0c6; font-size: 13px; }
+@media (hover: none) and (pointer: coarse) { .touch-note { display: block; } }
+@media (max-width: 760px) {
+  #scr-title::before { background: var(--scrim); }
+  .title-wrap { padding-left: 0; margin: 0 auto; }
+}
+
+/* ---------- panels ---------- */
+.panel {
+  width: min(100%, 1000px); margin: auto;
+  display: grid; gap: 20px; align-content: start;
+  padding: clamp(18px, 3vw, 30px);
+  background: var(--hull);
+  border: 1px solid var(--line); border-radius: 18px;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+}
+.panel.narrow { width: min(100%, 760px); }
+.panel-head { display: flex; align-items: center; gap: 12px 18px; flex-wrap: wrap; }
+.panel-head h2, .panel h2 { margin: 0; font-size: 22px; line-height: 1.3; text-wrap: balance; }
+h2 small, h3 small { font-weight: 400; color: var(--dim); margin-left: 6px; font-size: 13px; }
+h3 { margin: 0; font-size: 16px; }
+.back {
+  padding: 7px 12px; border-radius: 9px; cursor: pointer;
+  border: 1px solid var(--line); background: transparent; color: var(--haze); font-size: 14px;
+}
+.back small { color: var(--dim); }
+.back:hover { border-color: var(--line-strong); color: var(--star); }
+.note { margin: 0; color: var(--haze); font-size: 14px; max-width: 64em; }
+.note .en { margin-top: 2px; }
+.note.small { font-size: 12.5px; }
+
+.btn {
+  display: inline-flex; flex-direction: column; align-items: flex-start; gap: 1px;
+  padding: 10px 16px; border-radius: 10px; cursor: pointer; line-height: 1.3;
+  border: 1px solid var(--line-strong); background: rgba(255, 255, 255, 0.04);
+  font-weight: 700; font-size: 15px; text-align: left;
+}
+.btn small { font-weight: 400; color: var(--dim); font-size: 11.5px; }
+.btn:hover { border-color: var(--beam); background: var(--beam-wash); }
+.btn.primary { background: var(--gold); color: var(--ink); border-color: var(--gold); }
+.btn.primary small { color: rgba(28, 34, 66, 0.72); }
+.btn.primary:hover { filter: brightness(1.06); }
+.btn.danger { border-color: rgba(238, 75, 43, 0.6); color: #ffc2b6; }
+.btn.danger.armed { background: var(--shu); color: #fff; border-color: var(--shu); }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.row-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.col-actions { display: grid; gap: 8px; }
+.col-actions .btn { width: 100%; }
+
+/* ---------- options (segmented) ---------- */
+.opts { display: grid; gap: 14px; align-content: start; }
+.opt { display: grid; gap: 6px; min-width: 0; }
+.opt-label { font-size: 13px; font-weight: 700; color: var(--haze); }
+.opt-label small { font-weight: 400; color: var(--dim); margin-left: 6px; font-size: 11.5px; }
+.seg { display: flex; gap: 4px; padding: 4px; border: 1px solid var(--line); border-radius: 11px; background: rgba(0, 0, 0, 0.22); }
+.seg button {
+  flex: 1 1 0; min-width: 0; padding: 7px 8px; border: 0; border-radius: 8px; cursor: pointer;
+  background: transparent; color: var(--haze); font-size: 14px; font-weight: 700; line-height: 1.25;
+}
+.seg button small { display: block; font-weight: 400; font-size: 11px; color: var(--dim); }
+.seg button:hover { color: var(--star); background: rgba(255, 255, 255, 0.05); }
+.seg button[aria-checked="true"] { background: var(--beam); color: var(--space); }
+.seg button[aria-checked="true"] small { color: rgba(7, 10, 28, 0.66); }
+.settings-grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 16px 20px; }
+.danger-zone {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  padding: 14px 16px; border: 1px dashed rgba(238, 75, 43, 0.4); border-radius: 12px;
+}
+.danger-zone small { display: block; color: var(--dim); font-size: 12px; }
+
+/* ---------- level select ---------- */
+.select-body { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 24px; align-items: start; }
+@media (max-width: 780px) { .select-body { grid-template-columns: minmax(0, 1fr); } }
+.levels { display: grid; gap: 8px; }
+.lv {
+  width: 100%; cursor: pointer; text-align: left;
+  display: grid; grid-template-columns: 70px minmax(0, 1fr) auto; grid-template-areas: "tag name meta" "tag bar bar";
+  gap: 6px 14px; align-items: center;
+  padding: 12px 16px; border-radius: 12px;
+  border: 1px solid var(--line); background: rgba(255, 255, 255, 0.025);
+  transition: background-color 0.15s, color 0.15s, transform 0.15s;
+}
+.lv:hover { border-color: var(--line-strong); }
+.lv-tag { grid-area: tag; font-family: var(--font-display); font-size: 30px; line-height: 1; }
+.lv-name { grid-area: name; font-weight: 700; min-width: 0; }
+.lv-name small { color: var(--dim); font-weight: 400; margin-left: 6px; }
+.lv-meta { grid-area: meta; font-family: var(--font-hud); font-size: 12px; color: var(--haze); text-align: right; font-variant-numeric: tabular-nums; }
+.lv-bar { grid-area: bar; height: 4px; border-radius: 2px; overflow: hidden; background: rgba(255, 255, 255, 0.08); }
+.lv-bar i { display: block; height: 100%; background: var(--beam); }
+.lv[aria-checked="true"] {
+  background: var(--paper); color: var(--ink); border-color: var(--paper);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4); transform: translateX(4px);
+}
+.lv[aria-checked="true"] .lv-name small, .lv[aria-checked="true"] .lv-meta { color: var(--pencil); }
+.lv[aria-checked="true"] .lv-bar { background: rgba(28, 34, 66, 0.12); }
+.lv[aria-checked="true"] .lv-bar i { background: var(--shu); }
+.lv:disabled { opacity: 0.45; cursor: not-allowed; }
+@media (max-width: 520px) {
+  .lv { grid-template-columns: 54px minmax(0, 1fr); grid-template-areas: "tag name" "tag meta" "tag bar"; padding: 10px 12px; }
+  .lv-tag { font-size: 24px; }
+  .lv-meta { text-align: left; }
+}
+.launch {
+  margin-top: 8px; width: 100%; cursor: pointer;
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 14px 20px; border: 0; border-radius: 12px;
+  background: var(--gold); color: var(--ink);
+  font-family: var(--font-display); font-size: 26px;
+  box-shadow: 0 10px 30px rgba(255, 201, 74, 0.22);
+}
+.launch small { font-family: var(--font-hud); font-size: 13px; font-weight: 700; letter-spacing: 0.18em; }
+.launch:hover { filter: brightness(1.06); }
+
+/* ---------- word rows (weak list, results) ---------- */
+.wordrows { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.wr {
+  display: grid; grid-template-columns: auto minmax(4.5em, max-content) minmax(0, 1fr) minmax(0, 1.4fr) auto; align-items: center; gap: 4px 14px;
+  padding: 8px 12px; border-radius: 10px; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--line);
+}
+.wr-w { font-family: var(--font-card); font-weight: 600; font-size: 22px; line-height: 1.2; }
+.wr-r { color: var(--haze); line-height: 1.3; min-width: 0; }
+.wr-r i { display: block; font-style: normal; font-family: var(--font-hud); color: var(--dim); font-size: 12px; }
+.wr-m { color: var(--haze); font-size: 13.5px; min-width: 0; }
+.wr-tag { font-size: 12px; font-weight: 700; white-space: nowrap; padding: 2px 8px; border-radius: 999px; border: 1px solid currentColor; }
+.wr-tag.hit { color: #ff9c86; }
+.wr-tag.hint { color: var(--gold); }
+.wr-tag.miss { color: var(--haze); }
+.wr-tag.ok { color: var(--beam); }
+@media (max-width: 620px) {
+  .wr { grid-template-columns: auto minmax(0, max-content) minmax(0, 1fr); }
+  .wr-m { grid-column: 2 / -1; }
+  .wr-tag { grid-column: 2 / -1; justify-self: start; }
+}
+.say {
+  width: 32px; height: 32px; display: grid; place-items: center; cursor: pointer;
+  border-radius: 50%; border: 1px solid var(--line-strong); background: transparent; color: var(--beam);
+}
+.say:hover { background: var(--beam-wash); }
+.say svg { width: 15px; height: 15px; }
+.empty { padding: 26px; text-align: center; color: var(--dim); border: 1px dashed var(--line-strong); border-radius: 12px; }
+
+/* ---------- word list ---------- */
+.words-tools { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; }
+.tabs { display: flex; flex-wrap: wrap; gap: 4px; }
+.tabs button {
+  padding: 6px 12px; border-radius: 8px; cursor: pointer; font-weight: 700; font-size: 14px;
+  border: 1px solid var(--line); background: transparent; color: var(--haze);
+}
+.tabs button[aria-selected="true"] { background: var(--paper); color: var(--ink); border-color: var(--paper); }
+.search input {
+  width: min(100%, 300px); padding: 8px 12px; border-radius: 9px;
+  border: 1px solid var(--line-strong); background: rgba(0, 0, 0, 0.25); color: var(--star); font: inherit; font-size: 14px;
+}
+.table-wrap { overflow: auto; max-height: min(58vh, 640px); border: 1px solid var(--line); border-radius: 12px; }
+.table-wrap.plain { max-height: none; }
+table { border-collapse: collapse; width: 100%; min-width: 640px; }
+.tips { min-width: 520px; }
+th, td { padding: 7px 12px; text-align: left; border-bottom: 1px solid var(--line); vertical-align: middle; }
+th { position: sticky; top: 0; z-index: 1; background: var(--hull-solid); font-size: 12px; color: var(--haze); white-space: nowrap; }
+th small { color: var(--dim); font-weight: 400; }
+td.w { font-family: var(--font-card); font-weight: 600; font-size: 20px; white-space: nowrap; }
+td.r { color: var(--haze); white-space: nowrap; }
+td.ro { font-family: var(--font-hud); color: var(--dim); font-size: 13px; }
+td.m { color: var(--haze); font-size: 13.5px; }
+td.rec { font-family: var(--font-hud); font-size: 12px; color: var(--dim); white-space: nowrap; font-variant-numeric: tabular-nums; }
+td.rec .weak { color: #ff9c86; font-weight: 700; }
+td.rec .good { color: var(--beam); }
+.tips td:first-child { font-family: var(--font-card); font-size: 18px; white-space: nowrap; }
+.tips td.tip-en { color: var(--dim); font-size: 13px; }
+
+/* ---------- how to ---------- */
+.howto { margin: 0; padding-left: 1.4em; display: grid; gap: 14px; max-width: 62em; }
+.howto li::marker { font-family: var(--font-hud); color: var(--beam); }
+.howto b { display: block; font-size: 16px; }
+.howto span { display: block; color: var(--haze); }
+.howto-keys { display: flex; flex-wrap: wrap; gap: 10px 22px; color: var(--haze); }
+.howto-keys small { color: var(--dim); }
+
+/* ---------- practice ---------- */
+#scr-practice { align-items: start; }
+.practice { width: min(100%, 860px); margin: 0 auto; display: grid; gap: 16px; }
+.p-head { display: flex; align-items: center; gap: 10px 16px; flex-wrap: wrap; }
+.p-level { font-weight: 700; color: var(--haze); }
+.p-stats { margin-left: auto; display: flex; gap: 18px; font-family: var(--font-hud); font-variant-numeric: tabular-nums; }
+.p-stats span { display: grid; line-height: 1.15; text-align: right; }
+.p-stats small { font-size: 10px; letter-spacing: 0.16em; color: var(--dim); }
+.p-stats b { font-size: 18px; }
+.p-progress { height: 4px; border-radius: 2px; overflow: hidden; background: rgba(255, 255, 255, 0.08); }
+.p-progress i { display: block; height: 100%; width: 0; background: var(--beam); transition: width 0.3s; }
+.p-card {
+  position: relative; min-height: 270px;
+  display: grid; justify-items: center; align-content: center; gap: 4px;
+  padding: 26px 30px 24px 64px; text-align: center;
+  background: var(--paper); color: var(--ink); border-radius: 16px;
+  box-shadow: 0 26px 60px rgba(0, 0, 0, 0.5);
+}
+.p-card::before {
+  content: ""; position: absolute; left: 22px; top: 50%; width: 14px; height: 14px; margin-top: -7px;
+  border-radius: 50%; background: var(--space); box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.7);
+}
+.p-card::after {
+  content: ""; position: absolute; left: 4px; top: 50%; width: 34px; height: 34px; margin-top: -17px;
+  border-radius: 50%; border: 3px solid #c3c9dc; border-right-color: transparent; transform: rotate(-12deg);
+}
+.p-card > .p-rule { position: absolute; left: 48px; top: 10px; bottom: 10px; width: 1px; background: rgba(238, 75, 43, 0.3); }
+.p-prompt { font-weight: 700; font-size: clamp(22px, 4vw, 30px); line-height: 1.3; }
+.p-prompt:empty, .p-mean:empty { display: none; }
+.p-furi { font-weight: 700; font-size: 20px; letter-spacing: 0.08em; color: var(--pencil); min-height: 1.5em; }
+.p-word { font-family: var(--font-card); font-weight: 600; font-size: clamp(44px, 9vw, 78px); line-height: 1.15; }
+.p-word:empty { display: none; }
+.p-mean { color: var(--pencil); font-size: 16px; }
+.p-roma { font-family: var(--font-hud); font-size: 24px; font-weight: 600; letter-spacing: 0.05em; color: #8b91a8; min-height: 1.5em; margin-top: 4px; }
+.p-roma .next { color: var(--ink); text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 6px; }
+.p-roma .caret { color: var(--pencil); animation: blink 1s steps(1) infinite; }
+.done { color: var(--shu); }
+.p-card.shake { animation: shake 0.24s; }
+.p-card.good { box-shadow: 0 0 0 3px var(--beam), 0 26px 60px rgba(0, 0, 0, 0.5); }
+.p-mark { position: absolute; right: 22px; top: 16px; width: 70px; height: 70px; overflow: visible; }
+.p-mark path, .p-mark ellipse { fill: none; stroke: var(--shu); stroke-width: 5; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 300; stroke-dashoffset: 300; animation: draw 0.45s ease-out forwards; }
+.p-help { margin: 0; text-align: center; color: var(--dim); font-size: 13px; }
+
+/* ---------- on-screen keyboard ---------- */
+.kb { --u: clamp(22px, 5.4vw, 46px); --g: clamp(3px, 0.6vw, 5px); display: grid; gap: var(--g); justify-content: center; user-select: none; }
+.kb[hidden] { display: none; }
+.kb-row { display: flex; gap: var(--g); padding-left: calc(var(--indent, 0) * var(--u)); }
+.kb-key {
+  position: relative; width: var(--u); height: calc(var(--u) * 1.06); flex: none;
+  display: grid; place-items: center; border-radius: 7px;
+  background: rgba(255, 255, 255, 0.05); border: 1px solid var(--line);
+  color: var(--haze); font-weight: 700; font-size: calc(var(--u) * 0.38);
+  transition: background-color 0.1s, color 0.1s;
+}
+.kb-key i { position: absolute; right: 4px; bottom: 1px; font-style: normal; font-family: var(--font-hud); font-size: calc(var(--u) * 0.22); color: var(--dim); }
+.kb-key s { position: absolute; left: 4px; top: 1px; text-decoration: none; font-size: calc(var(--u) * 0.24); color: var(--dim); }
+.kb-key.home::after { content: ""; position: absolute; bottom: 4px; left: 35%; width: 30%; height: 2px; border-radius: 1px; background: var(--dim); }
+.kb-key.wide { width: calc(var(--u) * 1.7); font-size: calc(var(--u) * 0.26); }
+.kb-key.next { background: var(--beam); color: var(--space); border-color: var(--beam); box-shadow: 0 0 18px rgba(111, 243, 255, 0.55); }
+.kb-key.next i, .kb-key.next s { color: rgba(7, 10, 28, 0.7); }
+
+/* ---------- pause ---------- */
+#scr-pause { place-items: center; }
+#scr-pause::before { content: ""; position: fixed; inset: 0; z-index: -1; background: var(--scrim); }
+.panel.pause { width: min(100%, 360px); }
+
+/* ---------- result ---------- */
+.result { width: min(100%, 980px); }
+.r-top { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 20px 32px; align-items: center; }
+@media (max-width: 640px) { .r-top { grid-template-columns: minmax(0, 1fr); justify-items: start; } }
+.stamp-wrap { display: grid; justify-items: center; gap: 8px; }
+.stamp {
+  width: 148px; height: 148px; border-radius: 50%;
+  display: grid; place-items: center;
+  border: 6px solid var(--shu); color: var(--shu);
+  box-shadow: inset 0 0 0 4px rgba(7, 10, 28, 0.9), inset 0 0 0 6px var(--shu);
+  font-family: var(--font-stamp); font-size: 80px; line-height: 1;
+  transform: rotate(-9deg);
+  animation: stamp 0.5s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+.stamp.two { font-size: 54px; }
+.stamp-en { font-family: var(--font-hud); font-size: 12px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--shu); }
+.r-head { display: grid; gap: 8px; min-width: 0; }
+.r-head h2 { font-size: 28px; }
+.r-msg { margin: 0; color: var(--haze); }
+.r-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)); gap: 10px 18px; margin-top: 6px; }
+.stat { display: grid; gap: 0; line-height: 1.25; }
+.stat b { font-family: var(--font-hud); font-size: 26px; font-variant-numeric: tabular-nums; }
+.stat b.gold { color: var(--gold); }
+.stat span { font-size: 12px; color: var(--dim); }
+.stat em { font-style: normal; font-size: 11px; color: var(--gold); font-family: var(--font-hud); letter-spacing: 0.1em; }
+.r-review { display: grid; gap: 10px; }
+.r-review .wordrows { max-height: min(38vh, 420px); overflow-y: auto; }
+
+/* ---------- floating bits ---------- */
+#pause-btn {
+  position: fixed; z-index: 5; cursor: pointer;
+  right: calc(16px + env(safe-area-inset-right, 0px)); bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+  padding: 6px 12px; border-radius: 9px; border: 1px solid var(--line-strong);
+  background: rgba(12, 17, 42, 0.7); color: var(--haze); font-size: 14px;
+}
+#pause-btn small { color: var(--dim); }
+#toast {
+  position: fixed; z-index: 20; left: 50%; transform: translateX(-50%);
+  bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+  max-width: calc(100% - 32px); padding: 10px 16px; border-radius: 10px;
+  background: var(--hull-solid); border: 1px solid var(--line-strong); font-size: 14px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+@keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-8px); } 50% { transform: translateX(7px); } 75% { transform: translateX(-4px); } }
+@keyframes blink { 50% { opacity: 0; } }
+@keyframes draw { to { stroke-dashoffset: 0; } }
+@keyframes stamp { from { opacity: 0; transform: rotate(-9deg) scale(1.9); } to { opacity: 1; transform: rotate(-9deg) scale(1); } }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+}
+</style>
+</head>
+<body>
+<canvas id="cv" aria-hidden="true"></canvas>
+
+<div id="ui" lang="ja">
+
+  <!-- TITLE -->
+  <section class="screen" id="scr-title" hidden>
+    <div class="title-wrap">
+      <div class="brand">
+        <p class="eyebrow">JLPT Typing Defense · N5–N1</p>
+        <h1 class="logo"><span class="l1">ことば</span><span class="l2">メテオ</span></h1>
+        <p class="lede">迫りくる隕石の「よみ」をタイプして撃ち落とそう。<span class="en">Type the reading on each meteor's word card before it reaches the shield.</span></p>
+      </div>
+      <nav class="menu" aria-label="Main menu">
+        <button class="mi primary" type="button" data-act="meteor"><kbd>1</kbd><span class="mi-t"><b>メテオ迎撃</b><small>Meteor Defense</small></span><span class="mi-go" aria-hidden="true">▶</span></button>
+        <button class="mi" type="button" data-act="practice"><kbd>2</kbd><span class="mi-t"><b>れんしゅう</b><small>Practice one card at a time</small></span></button>
+        <button class="mi" type="button" data-act="weak"><kbd>3</kbd><span class="mi-t"><b>にがて単語</b><small>Review weak words</small></span><span class="badge" id="weak-badge">0</span></button>
+        <button class="mi" type="button" data-act="words"><kbd>4</kbd><span class="mi-t"><b>単語リスト</b><small>Word list</small></span></button>
+        <button class="mi" type="button" data-act="settings"><kbd>5</kbd><span class="mi-t"><b>せってい</b><small>Settings</small></span></button>
+        <button class="mi" type="button" data-act="howto"><kbd>6</kbd><span class="mi-t"><b>あそびかた</b><small>How to play</small></span></button>
+      </nav>
+      <p class="status" id="title-status"></p>
+      <p class="touch-note">キーボードのあるパソコンで遊んでください。<span class="en">This game needs a physical keyboard.</span></p>
+    </div>
+  </section>
+
+  <!-- LEVEL SELECT -->
+  <section class="screen" id="scr-select" hidden>
+    <div class="panel">
+      <header class="panel-head">
+        <button class="back" type="button" data-back>← もどる <small>Back</small></button>
+        <h2 id="sel-title">メテオ迎撃 <small>Meteor Defense</small></h2>
+      </header>
+      <div class="select-body">
+        <div class="levels" id="levels" role="radiogroup" aria-label="Level"></div>
+        <div class="options">
+          <div class="opts" id="sel-opts"></div>
+          <button class="launch" type="button" id="launch"><span>発進</span><small>LAUNCH ⏎</small></button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- WEAK WORDS -->
+  <section class="screen" id="scr-weak" hidden>
+    <div class="panel">
+      <header class="panel-head">
+        <button class="back" type="button" data-back>← もどる <small>Back</small></button>
+        <h2>にがて単語 <small>Weak words</small></h2>
+      </header>
+      <p class="note">シールドに当たった単語や、ヒントを使った単語がここに集まります。ヒントなしで正しく打つと消えていきます。<span class="en">Words that hit the shield or needed a hint collect here. Type them right without a hint and they clear.</span></p>
+      <div class="row-actions" id="weak-actions">
+        <button class="btn primary" type="button" data-act="weak-meteor">メテオで復習 <small>Meteor review</small></button>
+        <button class="btn" type="button" data-act="weak-practice">れんしゅうで復習 <small>Practice review</small></button>
+      </div>
+      <ul class="wordrows" id="weak-list"></ul>
+    </div>
+  </section>
+
+  <!-- WORD LIST -->
+  <section class="screen" id="scr-words" hidden>
+    <div class="panel">
+      <header class="panel-head">
+        <button class="back" type="button" data-back>← もどる <small>Back</small></button>
+        <h2>単語リスト <small>Word list</small></h2>
+      </header>
+      <div class="words-tools">
+        <div class="tabs" id="word-tabs" role="tablist" aria-label="Level"></div>
+        <label class="search" for="word-search"><span class="sr">Search</span>
+          <input id="word-search" type="search" placeholder="検索 · 漢字 / かな / English" autocomplete="off" spellcheck="false">
+        </label>
+      </div>
+      <p class="note small" id="word-count"></p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th><span class="sr">Listen</span></th><th>単語 <small>Word</small></th><th>よみ <small>Reading</small></th><th>ローマ字</th><th>意味 <small>Meaning</small></th><th>記録 <small>Record</small></th></tr></thead>
+          <tbody id="word-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- SETTINGS -->
+  <section class="screen" id="scr-settings" hidden>
+    <div class="panel narrow">
+      <header class="panel-head">
+        <button class="back" type="button" data-back>← もどる <small>Back</small></button>
+        <h2>せってい <small>Settings</small></h2>
+      </header>
+      <div class="opts settings-grid" id="settings-opts"></div>
+      <div class="danger-zone">
+        <div><b>記録をリセット</b><small>Clears scores, weak words and learned spellings in this browser.</small></div>
+        <button class="btn danger" type="button" id="reset-btn">リセット <small>Reset</small></button>
+      </div>
+      <p class="note small">記録はこのブラウザの中だけに保存されます。<span class="en">Progress is saved in this browser only.</span></p>
+    </div>
+  </section>
+
+  <!-- HOW TO PLAY -->
+  <section class="screen" id="scr-howto" hidden>
+    <div class="panel narrow">
+      <header class="panel-head">
+        <button class="back" type="button" data-back>← もどる <small>Back</small></button>
+        <h2>あそびかた <small>How to play</small></h2>
+      </header>
+      <ol class="howto">
+        <li><b>単語カードの「よみ」をタイプ</b><span>隕石には単語カードがついています。よみを最後まで打つとレーザーで爆破。</span><span class="en">Each meteor carries a word card. Type its reading to the end and the laser destroys it.</span></li>
+        <li><b>ふりがなは後から出る</b><span>「あとから」設定では数秒後にふりがなが出ます。出る前に打てばスコア ×1.5。</span><span class="en">With Delayed furigana the reading appears after a few seconds. Type it before then for a ×1.5 bonus.</span></li>
+        <li><b>シールドを守る</b><span>隕石がシールドに当たると1ダメージ。5回で終わり。3ウェーブのあとに巨大隕石が来ます。</span><span class="en">A meteor that reaches the shield costs one cell; five and the mission ends. A giant meteor follows three waves.</span></li>
+        <li><b>まちがえた単語は復習</b><span>当たった単語・ヒントを使った単語は「にがて単語」に入り、次から出やすくなります。</span><span class="en">Missed and hinted words go to Weak words and come up more often.</span></li>
+      </ol>
+      <div class="howto-keys">
+        <span><kbd>Space</kbd> ヒント <small>Hint</small></span>
+        <span><kbd>Backspace</kbd> ねらいを解除 <small>Release target</small></span>
+        <span><kbd>Esc</kbd> ポーズ <small>Pause</small></span>
+      </div>
+      <h3>ローマ字のコツ <small>Romaji tips</small></h3>
+      <div class="table-wrap plain">
+        <table class="tips">
+          <tbody>
+            <tr><td>ん</td><td><code>nn</code> · 子音の前は <code>n</code> でもOK</td><td class="tip-en">nn; a single n works before most consonants (kanji)</td></tr>
+            <tr><td>っ</td><td>次の子音を重ねる <code>kk</code> <code>tt</code> <code>ss</code> · <code>xtu</code></td><td class="tip-en">double the next consonant, or xtu / ltu</td></tr>
+            <tr><td>しゃ ちゃ じゃ</td><td><code>sha</code> <code>cha</code> <code>ja</code> · <code>sya</code> <code>tya</code> <code>zya</code></td><td class="tip-en">both spelling systems are accepted</td></tr>
+            <tr><td>ー</td><td><code>-</code> (マイナスキー)</td><td class="tip-en">the minus key</td></tr>
+            <tr><td>を · づ · ぢ</td><td><code>wo</code> · <code>du</code> · <code>di</code></td><td class="tip-en">as an IME expects them</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="note small">かな入力は日本語(JIS)配列キーボード用です。濁音は「か」+「゛」のように2打で入力します。<span class="en">Kana input follows the Japanese JIS layout; voiced kana take two keys, e.g. か then ゛.</span></p>
+    </div>
+  </section>
+
+  <!-- PRACTICE -->
+  <section class="screen" id="scr-practice" hidden>
+    <div class="practice">
+      <header class="p-head">
+        <button class="back" type="button" data-act="practice-quit">✕ やめる <small>Esc</small></button>
+        <span class="p-level" id="p-level"></span>
+        <span class="p-stats">
+          <span><small>WORD</small><b id="p-count">1/20</b></span>
+          <span><small>TIME</small><b id="p-time">0:00</b></span>
+          <span><small>ACC</small><b id="p-acc">100%</b></span>
+        </span>
+      </header>
+      <div class="p-progress"><i id="p-bar"></i></div>
+      <div class="p-card" id="p-card">
+        <i class="p-rule" aria-hidden="true"></i>
+        <div class="p-prompt" id="p-prompt"></div>
+        <div class="p-furi" id="p-furi"></div>
+        <div class="p-word" id="p-word"></div>
+        <div class="p-mean" id="p-mean"></div>
+        <div class="p-roma" id="p-roma"></div>
+        <svg class="p-mark" id="p-mark" viewBox="0 0 80 80" aria-hidden="true"></svg>
+      </div>
+      <p class="p-help" id="p-help"><kbd>Space</kbd> ヒント Hint · <kbd>Esc</kbd> やめる Quit</p>
+      <div class="kb" id="p-kbd" aria-hidden="true"></div>
+    </div>
+  </section>
+
+  <!-- PAUSE -->
+  <section class="screen" id="scr-pause" hidden>
+    <div class="panel pause">
+      <h2>ポーズ <small>Paused</small></h2>
+      <div class="col-actions">
+        <button class="btn primary" type="button" data-act="resume">つづける <small>Resume · Esc</small></button>
+        <button class="btn" type="button" data-act="retry">やりなおす <small>Restart</small></button>
+        <button class="btn" type="button" data-act="menu">メニューへ <small>Quit to menu</small></button>
+      </div>
+    </div>
+  </section>
+
+  <!-- RESULT -->
+  <section class="screen" id="scr-result" hidden>
+    <div class="panel result">
+      <div class="r-top">
+        <div class="stamp-wrap">
+          <div class="stamp" id="r-stamp">優</div>
+          <div class="stamp-en" id="r-grade-en">Very good</div>
+        </div>
+        <div class="r-head">
+          <p class="eyebrow" id="r-eyebrow">MISSION COMPLETE</p>
+          <h2 id="r-title">ミッション達成</h2>
+          <p class="r-msg" id="r-msg"></p>
+          <div class="r-stats" id="r-stats"></div>
+        </div>
+      </div>
+      <div class="r-review">
+        <h3 id="r-review-h">ふくしゅう <small>Review these words</small></h3>
+        <ul class="wordrows" id="r-list"></ul>
+      </div>
+      <div class="row-actions">
+        <button class="btn primary" type="button" data-act="retry">もう一度 <small>Retry · Enter</small></button>
+        <button class="btn" type="button" data-act="review-missed" id="r-review-btn">この単語をれんしゅう <small>Practice these</small></button>
+        <button class="btn" type="button" data-act="menu">メニュー <small>Menu · Esc</small></button>
+      </div>
+    </div>
+  </section>
+</div>
+
+<button id="pause-btn" type="button" hidden aria-label="Pause">❚❚ <small>Esc</small></button>
+<div id="toast" role="status" aria-live="polite" hidden></div>
+
+<script>
+'use strict';
+/* ============================================================
+   DATA — vocabulary by level.
+   One entry per line:  word|reading|meaning
+   An empty reading means the word is written in kana and is its own reading.
+   JLPT has published no official word lists since 2010, so levels follow
+   the commonly used community lists and are approximate.
+   ============================================================ */
+
+const LEVEL_INFO = [
+  { id: 'kana', tag: 'かな', name: 'かな', en: 'Kana', mult: 1.0 },
+  { id: 'N5', tag: 'N5', name: '入門', en: 'Beginner', mult: 1.0 },
+  { id: 'N4', tag: 'N4', name: '初級', en: 'Elementary', mult: 1.2 },
+  { id: 'N3', tag: 'N3', name: '中級', en: 'Intermediate', mult: 1.4 },
+  { id: 'N2', tag: 'N2', name: '中上級', en: 'Upper-intermediate', mult: 1.6 },
+  { id: 'N1', tag: 'N1', name: '上級', en: 'Advanced', mult: 1.8 },
+];
+
+const VOCAB_RAW = {
+kana: `
+いぬ||dog
+ねこ||cat
+さかな||fish
+とり||bird
+うま||horse
+さくら||cherry blossom
+すし||sushi
+そば||soba noodles
+みそ||miso
+おちゃ||green tea
+ごはん||rice; meal
+ありがとう||thank you
+おはよう||good morning
+こんにちは||hello
+こんばんは||good evening
+さようなら||goodbye
+すみません||excuse me; sorry
+おやすみ||good night
+いただきます||said before eating
+ごちそうさま||thanks for the meal
+はい||yes
+いいえ||no
+これ||this
+それ||that
+あれ||that (over there)
+どこ||where
+だれ||who
+なに||what
+いつ||when
+いくら||how much
+とても||very
+ちょっと||a little
+もっと||more
+ゆっくり||slowly
+いっしょに||together
+たくさん||a lot
+きれい||pretty; clean
+かわいい||cute
+おいしい||delicious
+たのしい||fun
+うれしい||glad; happy
+すごい||amazing
+げんき||healthy; energetic
+ひらがな||hiragana
+かたかな||katakana
+きっぷ||ticket
+しゅくだい||homework
+りょこう||travel
+テレビ||television
+ラジオ||radio
+カメラ||camera
+パン||bread
+コーヒー||coffee
+ジュース||juice
+ケーキ||cake
+アイス||ice cream
+レストラン||restaurant
+ホテル||hotel
+デパート||department store
+コンビニ||convenience store
+スーパー||supermarket
+バス||bus
+タクシー||taxi
+トイレ||toilet
+シャワー||shower
+ベッド||bed
+ドア||door
+テーブル||table
+パソコン||personal computer
+スマホ||smartphone
+ゲーム||game
+サッカー||soccer
+テニス||tennis
+ピアノ||piano
+ギター||guitar
+ノート||notebook
+ボールペン||ballpoint pen
+シャツ||shirt
+スカート||skirt
+メール||email
+インターネット||internet
+アニメ||anime
+チョコレート||chocolate
+ハンバーガー||hamburger
+パーティー||party
+ニュース||news
+メニュー||menu
+チケット||ticket
+エレベーター||elevator
+コンピューター||computer
+フォーク||fork
+ナイフ||knife
+スプーン||spoon
+ファイル||file
+ソファ||sofa
+チェック||check
+カレー||curry
+ラーメン||ramen
+アメリカ||America
+イギリス||the UK
+フランス||France
+ベトナム||Vietnam
+インドネシア||Indonesia
+ブラジル||Brazil
+`,
+
+N5: `
+学校|がっこう|school
+先生|せんせい|teacher
+学生|がくせい|student
+大学|だいがく|university
+友達|ともだち|friend
+日本|にほん|Japan
+日本語|にほんご|Japanese (language)
+英語|えいご|English (language)
+今日|きょう|today
+明日|あした|tomorrow
+昨日|きのう|yesterday
+毎日|まいにち|every day
+毎朝|まいあさ|every morning
+今週|こんしゅう|this week
+先週|せんしゅう|last week
+来週|らいしゅう|next week
+今年|ことし|this year
+去年|きょねん|last year
+来年|らいねん|next year
+時間|じかん|time; hours
+時計|とけい|clock; watch
+午前|ごぜん|morning; a.m.
+午後|ごご|afternoon; p.m.
+天気|てんき|weather
+元気|げんき|healthy; energetic
+電気|でんき|electricity; light
+電車|でんしゃ|train
+電話|でんわ|telephone
+自転車|じてんしゃ|bicycle
+自動車|じどうしゃ|automobile
+車|くるま|car
+駅|えき|station
+道|みち|road; way
+銀行|ぎんこう|bank
+病院|びょういん|hospital
+会社|かいしゃ|company
+会社員|かいしゃいん|office worker
+図書館|としょかん|library
+映画|えいが|movie
+音楽|おんがく|music
+写真|しゃしん|photograph
+新聞|しんぶん|newspaper
+雑誌|ざっし|magazine
+手紙|てがみ|letter
+切手|きって|postage stamp
+辞書|じしょ|dictionary
+鉛筆|えんぴつ|pencil
+部屋|へや|room
+家族|かぞく|family
+両親|りょうしん|parents
+兄弟|きょうだい|siblings
+父|ちち|(my) father
+母|はは|(my) mother
+兄|あに|(my) older brother
+姉|あね|(my) older sister
+弟|おとうと|younger brother
+妹|いもうと|younger sister
+子供|こども|child
+大人|おとな|adult
+男の子|おとこのこ|boy
+女の子|おんなのこ|girl
+外国|がいこく|foreign country
+外国人|がいこくじん|foreigner
+山|やま|mountain
+川|かわ|river
+海|うみ|sea
+空|そら|sky
+雨|あめ|rain
+雪|ゆき|snow
+花|はな|flower
+水|みず|water
+魚|さかな|fish
+肉|にく|meat
+野菜|やさい|vegetable
+果物|くだもの|fruit
+牛乳|ぎゅうにゅう|milk
+お茶|おちゃ|(green) tea
+朝ご飯|あさごはん|breakfast
+晩ご飯|ばんごはん|dinner
+食べ物|たべもの|food
+飲み物|のみもの|drink
+買い物|かいもの|shopping
+料理|りょうり|cooking; cuisine
+旅行|りょこう|trip; travel
+勉強|べんきょう|study
+宿題|しゅくだい|homework
+質問|しつもん|question
+問題|もんだい|problem; question
+漢字|かんじ|kanji
+言葉|ことば|word; language
+名前|なまえ|name
+誕生日|たんじょうび|birthday
+休み|やすみ|rest; holiday
+仕事|しごと|work; job
+春|はる|spring
+夏|なつ|summer
+秋|あき|autumn
+冬|ふゆ|winter
+朝|あさ|morning
+夜|よる|night
+夕方|ゆうがた|evening
+半分|はんぶん|half
+左|ひだり|left
+右|みぎ|right
+上|うえ|above; up
+下|した|below; down
+前|まえ|front; before
+後ろ|うしろ|behind
+外|そと|outside
+中|なか|inside
+東|ひがし|east
+西|にし|west
+南|みなみ|south
+北|きた|north
+目|め|eye
+耳|みみ|ear
+口|くち|mouth
+手|て|hand
+足|あし|foot; leg
+頭|あたま|head
+顔|かお|face
+病気|びょうき|illness
+薬|くすり|medicine
+お金|おかね|money
+動物|どうぶつ|animal
+犬|いぬ|dog
+猫|ねこ|cat
+大きい|おおきい|big
+小さい|ちいさい|small
+新しい|あたらしい|new
+古い|ふるい|old (not new)
+高い|たかい|tall; expensive
+安い|やすい|cheap
+長い|ながい|long
+短い|みじかい|short
+暑い|あつい|hot (weather)
+寒い|さむい|cold (weather)
+白い|しろい|white
+黒い|くろい|black
+赤い|あかい|red
+青い|あおい|blue
+楽しい|たのしい|fun; enjoyable
+難しい|むずかしい|difficult
+忙しい|いそがしい|busy
+面白い|おもしろい|interesting
+有名|ゆうめい|famous
+大切|たいせつ|important; precious
+大丈夫|だいじょうぶ|all right; OK
+上手|じょうず|skillful
+下手|へた|unskillful
+好き|すき|liked; favorite
+便利|べんり|convenient
+静か|しずか|quiet
+食べる|たべる|to eat
+飲む|のむ|to drink
+見る|みる|to see; to watch
+聞く|きく|to listen; to ask
+読む|よむ|to read
+書く|かく|to write
+話す|はなす|to speak
+行く|いく|to go
+来る|くる|to come
+帰る|かえる|to go home
+歩く|あるく|to walk
+泳ぐ|およぐ|to swim
+買う|かう|to buy
+休む|やすむ|to rest
+起きる|おきる|to get up
+寝る|ねる|to sleep
+働く|はたらく|to work
+教える|おしえる|to teach
+習う|ならう|to learn
+覚える|おぼえる|to memorize
+忘れる|わすれる|to forget
+入る|はいる|to enter
+出る|でる|to go out; to leave
+待つ|まつ|to wait
+住む|すむ|to live (reside)
+使う|つかう|to use
+作る|つくる|to make
+立つ|たつ|to stand
+座る|すわる|to sit
+一人|ひとり|one person; alone
+二人|ふたり|two people
+三つ|みっつ|three (things)
+九つ|ここのつ|nine (things)
+`,
+
+N4: `
+会議|かいぎ|meeting
+意見|いけん|opinion
+経験|けいけん|experience
+説明|せつめい|explanation
+準備|じゅんび|preparation
+予定|よてい|plan; schedule
+予約|よやく|reservation
+約束|やくそく|promise
+連絡|れんらく|contact
+相談|そうだん|consultation
+研究|けんきゅう|research
+試験|しけん|exam
+授業|じゅぎょう|class; lesson
+教室|きょうしつ|classroom
+教育|きょういく|education
+文化|ぶんか|culture
+文学|ぶんがく|literature
+歴史|れきし|history
+地理|ちり|geography
+科学|かがく|science
+数学|すうがく|mathematics
+世界|せかい|world
+社会|しゃかい|society
+政治|せいじ|politics
+経済|けいざい|economy
+産業|さんぎょう|industry
+工場|こうじょう|factory
+空港|くうこう|airport
+飛行機|ひこうき|airplane
+地下鉄|ちかてつ|subway
+交通|こうつう|traffic
+事故|じこ|accident
+運転|うんてん|driving
+運動|うんどう|exercise
+趣味|しゅみ|hobby
+興味|きょうみ|interest
+生活|せいかつ|daily life
+習慣|しゅうかん|custom; habit
+季節|きせつ|season
+景色|けしき|scenery
+台風|たいふう|typhoon
+地震|じしん|earthquake
+火事|かじ|fire (disaster)
+警察|けいさつ|police
+安全|あんぜん|safety
+危険|きけん|danger
+心配|しんぱい|worry
+安心|あんしん|relief; peace of mind
+大事|だいじ|important
+特別|とくべつ|special
+普通|ふつう|normal; usual
+簡単|かんたん|easy; simple
+複雑|ふくざつ|complicated
+丁寧|ていねい|polite; careful
+親切|しんせつ|kind
+熱心|ねっしん|eager
+自由|じゆう|freedom
+必要|ひつよう|necessary
+十分|じゅうぶん|enough
+残念|ざんねん|regrettable; too bad
+失礼|しつれい|rudeness; excuse me
+最近|さいきん|recently
+最初|さいしょ|first; beginning
+最後|さいご|last; end
+途中|とちゅう|on the way
+以上|いじょう|or more; above
+以下|いか|or less; below
+以外|いがい|except; other than
+今度|こんど|next time
+将来|しょうらい|future
+昔|むかし|long ago
+世話|せわ|care; looking after
+挨拶|あいさつ|greeting
+返事|へんじ|reply
+招待|しょうたい|invitation
+お祝い|おいわい|celebration
+お土産|おみやげ|souvenir
+贈り物|おくりもの|gift
+美術館|びじゅつかん|art museum
+公園|こうえん|park
+近所|きんじょ|neighborhood
+建物|たてもの|building
+屋上|おくじょう|rooftop
+入口|いりぐち|entrance
+出口|でぐち|exit
+受付|うけつけ|reception desk
+売り場|うりば|sales floor
+品物|しなもの|goods
+値段|ねだん|price
+財布|さいふ|wallet
+番組|ばんぐみ|TV program
+放送|ほうそう|broadcast
+小説|しょうせつ|novel
+漫画|まんが|comics; manga
+翻訳|ほんやく|translation
+発音|はつおん|pronunciation
+文法|ぶんぽう|grammar
+会話|かいわ|conversation
+意味|いみ|meaning
+理由|りゆう|reason
+注意|ちゅうい|caution; attention
+規則|きそく|rule
+関係|かんけい|relationship
+彼女|かのじょ|she; girlfriend
+彼|かれ|he; boyfriend
+夫|おっと|husband
+妻|つま|wife
+息子|むすこ|son
+娘|むすめ|daughter
+祖父|そふ|grandfather
+祖母|そぼ|grandmother
+赤ちゃん|あかちゃん|baby
+気分|きぶん|mood; feeling
+気持ち|きもち|feeling
+怪我|けが|injury
+熱|ねつ|fever; heat
+力|ちから|power; strength
+声|こえ|voice
+音|おと|sound
+色|いろ|color
+形|かたち|shape
+光|ひかり|light
+空気|くうき|air
+星|ほし|star
+月|つき|moon; month
+集める|あつめる|to collect
+決める|きめる|to decide
+調べる|しらべる|to look up; investigate
+届ける|とどける|to deliver
+比べる|くらべる|to compare
+続ける|つづける|to continue
+考える|かんがえる|to think
+伝える|つたえる|to tell; convey
+運ぶ|はこぶ|to carry
+選ぶ|えらぶ|to choose
+喜ぶ|よろこぶ|to be glad
+驚く|おどろく|to be surprised
+急ぐ|いそぐ|to hurry
+戻る|もどる|to return
+届く|とどく|to reach; arrive
+直す|なおす|to fix
+壊れる|こわれる|to break
+間に合う|まにあう|to be in time
+手伝う|てつだう|to help
+楽しむ|たのしむ|to enjoy
+頑張る|がんばる|to do one's best
+怒る|おこる|to get angry
+笑う|わらう|to laugh
+泣く|なく|to cry
+写す|うつす|to copy; photograph
+増える|ふえる|to increase
+減る|へる|to decrease
+建てる|たてる|to build
+落ちる|おちる|to fall
+拾う|ひろう|to pick up
+捨てる|すてる|to throw away
+探す|さがす|to look for
+見つける|みつける|to find
+思い出す|おもいだす|to recall
+珍しい|めずらしい|rare
+厳しい|きびしい|strict
+嬉しい|うれしい|glad; happy
+悲しい|かなしい|sad
+寂しい|さびしい|lonely
+恥ずかしい|はずかしい|embarrassed
+正しい|ただしい|correct
+美しい|うつくしい|beautiful
+細かい|こまかい|fine; detailed
+深い|ふかい|deep
+浅い|あさい|shallow
+固い|かたい|hard; firm
+柔らかい|やわらかい|soft
+眠い|ねむい|sleepy
+苦い|にがい|bitter
+汚い|きたない|dirty
+`,
+
+N3: `
+宇宙|うちゅう|outer space
+地球|ちきゅう|the Earth
+環境|かんきょう|environment
+自然|しぜん|nature
+資源|しげん|resources
+現在|げんざい|the present
+過去|かこ|the past
+未来|みらい|the future
+年齢|ねんれい|age
+性格|せいかく|personality
+能力|のうりょく|ability
+努力|どりょく|effort
+目標|もくひょう|goal
+目的|もくてき|purpose
+結果|けっか|result
+原因|げんいん|cause
+影響|えいきょう|influence
+効果|こうか|effect
+状態|じょうたい|condition; state
+条件|じょうけん|condition; terms
+情報|じょうほう|information
+記事|きじ|article
+記者|きしゃ|reporter
+事件|じけん|incident; case
+犯人|はんにん|criminal
+法律|ほうりつ|law
+権利|けんり|right (entitlement)
+義務|ぎむ|duty
+責任|せきにん|responsibility
+選挙|せんきょ|election
+政府|せいふ|government
+国際|こくさい|international
+平和|へいわ|peace
+戦争|せんそう|war
+協力|きょうりょく|cooperation
+競争|きょうそう|competition
+成功|せいこう|success
+失敗|しっぱい|failure
+発見|はっけん|discovery
+発明|はつめい|invention
+発展|はってん|development
+技術|ぎじゅつ|technology
+機械|きかい|machine
+道具|どうぐ|tool
+材料|ざいりょう|material; ingredients
+製品|せいひん|product
+商品|しょうひん|merchandise
+貿易|ぼうえき|trade
+輸出|ゆしゅつ|export
+輸入|ゆにゅう|import
+給料|きゅうりょう|salary
+税金|ぜいきん|tax
+費用|ひよう|cost
+予算|よさん|budget
+貯金|ちょきん|savings
+借金|しゃっきん|debt
+収入|しゅうにゅう|income
+支払い|しはらい|payment
+契約|けいやく|contract
+面接|めんせつ|interview
+就職|しゅうしょく|getting a job
+退職|たいしょく|retirement
+専門|せんもん|specialty; major
+講義|こうぎ|lecture
+卒業|そつぎょう|graduation
+入学|にゅうがく|entering a school
+成績|せいせき|grades; results
+合格|ごうかく|passing (an exam)
+資格|しかく|qualification
+知識|ちしき|knowledge
+記憶|きおく|memory
+想像|そうぞう|imagination
+感情|かんじょう|emotion
+感動|かんどう|being moved
+緊張|きんちょう|nervousness
+我慢|がまん|patience; endurance
+遠慮|えんりょ|holding back
+感謝|かんしゃ|gratitude
+尊敬|そんけい|respect
+信用|しんよう|trust; credit
+秘密|ひみつ|secret
+冗談|じょうだん|joke
+文句|もんく|complaint
+噂|うわさ|rumor
+印象|いんしょう|impression
+表情|ひょうじょう|facial expression
+態度|たいど|attitude
+健康|けんこう|health
+手術|しゅじゅつ|surgery
+栄養|えいよう|nutrition
+睡眠|すいみん|sleep
+呼吸|こきゅう|breathing
+温度|おんど|temperature
+気温|きおん|air temperature
+洪水|こうずい|flood
+被害|ひがい|damage; harm
+避難|ひなん|evacuation
+都市|とし|city
+都会|とかい|big city
+田舎|いなか|countryside
+郊外|こうがい|suburbs
+住所|じゅうしょ|address
+交差点|こうさてん|intersection
+信号|しんごう|traffic light
+渋滞|じゅうたい|traffic jam
+乗客|じょうきゃく|passenger
+往復|おうふく|round trip
+片道|かたみち|one way
+到着|とうちゃく|arrival
+出発|しゅっぱつ|departure
+観光|かんこう|sightseeing
+宿泊|しゅくはく|lodging
+温泉|おんせん|hot spring
+祭り|まつり|festival
+伝統|でんとう|tradition
+芸術|げいじゅつ|art
+作品|さくひん|work (of art)
+演奏|えんそう|musical performance
+舞台|ぶたい|stage
+登場|とうじょう|appearance; entrance
+主人公|しゅじんこう|main character
+物語|ものがたり|story; tale
+表現|ひょうげん|expression
+単語|たんご|word; vocabulary
+発表|はっぴょう|announcement; presentation
+報告|ほうこく|report
+確認|かくにん|confirmation
+許可|きょか|permission
+禁止|きんし|prohibition
+注文|ちゅうもん|order
+配達|はいたつ|delivery
+修理|しゅうり|repair
+洗濯|せんたく|laundry
+片付ける|かたづける|to tidy up
+預ける|あずける|to leave in someone's care
+与える|あたえる|to give
+表す|あらわす|to express
+現れる|あらわれる|to appear
+疑う|うたがう|to doubt
+争う|あらそう|to compete; dispute
+祈る|いのる|to pray
+許す|ゆるす|to forgive; permit
+認める|みとめる|to admit; recognize
+任せる|まかせる|to entrust
+迷う|まよう|to get lost; hesitate
+悩む|なやむ|to worry
+諦める|あきらめる|to give up
+慣れる|なれる|to get used to
+離れる|はなれる|to move away from
+含む|ふくむ|to include
+加える|くわえる|to add
+支える|ささえる|to support
+助ける|たすける|to help; rescue
+守る|まもる|to protect
+破る|やぶる|to tear; break (a promise)
+燃える|もえる|to burn
+温める|あたためる|to warm up
+混ぜる|まぜる|to mix
+詳しい|くわしい|detailed
+激しい|はげしい|intense
+鋭い|するどい|sharp
+大人しい|おとなしい|quiet; well-behaved
+懐かしい|なつかしい|nostalgic
+羨ましい|うらやましい|envious
+貧しい|まずしい|poor
+怪しい|あやしい|suspicious
+親しい|したしい|close; friendly
+正確|せいかく|accurate
+確か|たしか|certain; sure
+立派|りっぱ|splendid
+完全|かんぜん|complete; perfect
+重要|じゅうよう|important
+基本|きほん|basics
+具体的|ぐたいてき|concrete; specific
+積極的|せっきょくてき|proactive
+急に|きゅうに|suddenly
+偶然|ぐうぜん|by chance
+次第に|しだいに|gradually
+相変わらず|あいかわらず|as usual
+`,
+
+N2: `
+維持|いじ|maintenance
+解決|かいけつ|solution
+改善|かいぜん|improvement
+解釈|かいしゃく|interpretation
+観察|かんさつ|observation
+管理|かんり|management
+企画|きかく|planning; project
+規模|きぼ|scale; scope
+共通|きょうつう|common; shared
+供給|きょうきゅう|supply
+需要|じゅよう|demand
+金融|きんゆう|finance
+景気|けいき|business conditions
+傾向|けいこう|tendency
+継続|けいぞく|continuation
+検討|けんとう|consideration
+現象|げんしょう|phenomenon
+貢献|こうけん|contribution
+構成|こうせい|composition
+混乱|こんらん|confusion
+削除|さくじょ|deletion
+作業|さぎょう|work; operation
+支援|しえん|support
+姿勢|しせい|posture; stance
+実験|じっけん|experiment
+実施|じっし|implementation
+指摘|してき|pointing out
+主張|しゅちょう|claim; assertion
+手段|しゅだん|means
+出版|しゅっぱん|publication
+省略|しょうりゃく|omission
+証明|しょうめい|proof
+処理|しょり|processing
+信頼|しんらい|trust
+推薦|すいせん|recommendation
+制限|せいげん|restriction
+製造|せいぞう|manufacturing
+設備|せつび|equipment
+選択|せんたく|selection
+増加|ぞうか|increase
+減少|げんしょう|decrease
+組織|そしき|organization
+対象|たいしょう|target; subject
+対策|たいさく|countermeasure
+担当|たんとう|being in charge
+地域|ちいき|region
+調整|ちょうせい|adjustment
+調査|ちょうさ|survey; investigation
+提案|ていあん|proposal
+適切|てきせつ|appropriate
+展開|てんかい|development; unfolding
+統一|とういつ|unification
+特徴|とくちょう|characteristic
+独立|どくりつ|independence
+内容|ないよう|content
+認識|にんしき|recognition
+把握|はあく|grasp
+判断|はんだん|judgment
+比較|ひかく|comparison
+評価|ひょうか|evaluation
+普及|ふきゅう|spread; diffusion
+分析|ぶんせき|analysis
+分野|ぶんや|field; area
+平均|へいきん|average
+変化|へんか|change
+方針|ほうしん|policy
+保存|ほぞん|preservation; saving
+発揮|はっき|display (of ability)
+範囲|はんい|range; scope
+反省|はんせい|reflection
+否定|ひてい|denial
+負担|ふたん|burden
+保証|ほしょう|guarantee
+募集|ぼしゅう|recruitment
+矛盾|むじゅん|contradiction
+目安|めやす|rough guide
+役割|やくわり|role
+輸送|ゆそう|transport
+要求|ようきゅう|demand; request
+要素|ようそ|element
+予測|よそく|prediction
+利益|りえき|profit
+領域|りょういき|domain; territory
+論理|ろんり|logic
+話題|わだい|topic
+曖昧|あいまい|vague
+著しい|いちじるしい|remarkable
+穏やか|おだやか|calm
+主に|おもに|mainly
+快適|かいてき|comfortable
+頑丈|がんじょう|sturdy
+貴重|きちょう|precious
+器用|きよう|dexterous
+強力|きょうりょく|powerful
+険しい|けわしい|steep
+豪華|ごうか|luxurious
+慎重|しんちょう|careful; cautious
+素直|すなお|honest; obedient
+鮮やか|あざやか|vivid
+退屈|たいくつ|boring
+妥当|だとう|valid; reasonable
+乏しい|とぼしい|scarce
+鈍い|にぶい|dull; slow
+柔軟|じゅうなん|flexible
+扱う|あつかう|to handle
+誤る|あやまる|to make a mistake
+抱える|かかえる|to hold; to have (problems)
+限る|かぎる|to limit
+構う|かまう|to mind; care about
+傾く|かたむく|to lean; tilt
+稼ぐ|かせぐ|to earn
+競う|きそう|to compete
+異なる|ことなる|to differ
+従う|したがう|to obey; follow
+備える|そなえる|to prepare for
+蓄える|たくわえる|to store up
+頼る|たよる|to rely on
+縮む|ちぢむ|to shrink
+努める|つとめる|to strive
+整える|ととのえる|to arrange
+眺める|ながめる|to gaze at
+除く|のぞく|to exclude
+省く|はぶく|to omit
+防ぐ|ふせぐ|to prevent
+招く|まねく|to invite
+求める|もとめる|to seek; request
+養う|やしなう|to nurture; support
+譲る|ゆずる|to hand over; yield
+略す|りゃくす|to abbreviate
+`,
+
+N1: `
+斡旋|あっせん|mediation
+遺憾|いかん|regrettable
+意図|いと|intention
+隠蔽|いんぺい|concealment
+迂回|うかい|detour
+円滑|えんかつ|smooth
+婉曲|えんきょく|euphemistic
+概略|がいりゃく|outline
+改革|かいかく|reform
+該当|がいとう|applicable
+画期的|かっきてき|groundbreaking
+過剰|かじょう|excess
+過疎|かそ|depopulation
+葛藤|かっとう|inner conflict
+還元|かんげん|giving back; reduction
+勧告|かんこく|official advice
+慣行|かんこう|customary practice
+緩和|かんわ|easing; relief
+危惧|きぐ|apprehension
+軌道|きどう|orbit; track
+規範|きはん|norm; standard
+起伏|きふく|ups and downs
+脚光|きゃっこう|spotlight
+窮屈|きゅうくつ|cramped
+脅威|きょうい|threat
+享受|きょうじゅ|enjoyment
+均衡|きんこう|balance
+屈指|くっし|one of the best
+経緯|けいい|circumstances; details
+継承|けいしょう|succession
+啓発|けいはつ|enlightenment
+懸念|けねん|concern
+見解|けんかい|view; opinion
+顕著|けんちょ|remarkable
+権威|けんい|authority
+交渉|こうしょう|negotiation
+控除|こうじょ|deduction
+拘束|こうそく|restraint
+抗議|こうぎ|protest
+互角|ごかく|evenly matched
+誇張|こちょう|exaggeration
+根拠|こんきょ|basis; grounds
+採択|さいたく|adoption
+錯覚|さっかく|illusion
+示唆|しさ|suggestion; hint
+施策|しさく|measure; policy
+慈善|じぜん|charity
+執着|しゅうちゃく|attachment; obsession
+充実|じゅうじつ|fullness; richness
+趣旨|しゅし|purpose; gist
+循環|じゅんかん|circulation
+衝撃|しょうげき|shock; impact
+象徴|しょうちょう|symbol
+衝突|しょうとつ|collision
+奨励|しょうれい|encouragement
+進捗|しんちょく|progress
+迅速|じんそく|swift
+是正|ぜせい|correction
+措置|そち|measure; step
+遂行|すいこう|execution
+衰退|すいたい|decline
+折衷|せっちゅう|compromise; blend
+潜在|せんざい|latent
+相殺|そうさい|offset; cancel out
+阻止|そし|prevention; blocking
+妥協|だきょう|compromise
+打診|だしん|sounding out
+脱却|だっきゃく|breaking free
+緻密|ちみつ|precise; meticulous
+仲裁|ちゅうさい|arbitration
+懲戒|ちょうかい|disciplinary action
+陳腐|ちんぷ|hackneyed
+追及|ついきゅう|pursuit; questioning
+提携|ていけい|partnership
+撤回|てっかい|retraction
+撤退|てったい|withdrawal
+転換|てんかん|conversion; shift
+倒産|とうさん|bankruptcy
+匿名|とくめい|anonymity
+捏造|ねつぞう|fabrication
+排除|はいじょ|exclusion
+破綻|はたん|collapse; failure
+繁栄|はんえい|prosperity
+煩雑|はんざつ|complicated; troublesome
+頻繁|ひんぱん|frequent
+敏感|びんかん|sensitive
+不可欠|ふかけつ|indispensable
+普遍|ふへん|universal
+紛争|ふんそう|dispute; conflict
+弊害|へいがい|harmful effect
+変遷|へんせん|transition
+放棄|ほうき|abandonment
+膨大|ぼうだい|enormous
+抜粋|ばっすい|excerpt
+摩擦|まさつ|friction
+漠然|ばくぜん|vague
+未曾有|みぞう|unprecedented
+無謀|むぼう|reckless
+名誉|めいよ|honor
+模索|もさく|groping; searching
+猶予|ゆうよ|grace period
+融通|ゆうずう|flexibility
+擁護|ようご|protection; defense
+抑制|よくせい|restraint; control
+濫用|らんよう|abuse; misuse
+履歴|りれき|history; record
+了承|りょうしょう|acknowledgment
+連携|れんけい|coordination
+露骨|ろこつ|blatant
+賄賂|わいろ|bribe
+和解|わかい|reconciliation
+潔い|いさぎよい|graceful; manly
+疎か|おろそか|negligent
+厳か|おごそか|solemn
+朗らか|ほがらか|cheerful
+健やか|すこやか|healthy
+滑らか|なめらか|smooth
+緩やか|ゆるやか|gentle; gradual
+赴く|おもむく|to proceed to
+培う|つちかう|to cultivate
+携わる|たずさわる|to be involved in
+営む|いとなむ|to run (a business)
+覆す|くつがえす|to overturn
+費やす|ついやす|to spend
+阻む|はばむ|to obstruct
+施す|ほどこす|to give; carry out
+賄う|まかなう|to cover (costs)
+司る|つかさどる|to govern
+促す|うながす|to urge
+秘める|ひめる|to hide; keep secret
+誇る|ほこる|to take pride in
+拒む|こばむ|to refuse
+貫く|つらぬく|to pierce; carry through
+潤う|うるおう|to be moist; profit
+目論む|もくろむ|to scheme
+戒める|いましめる|to admonish
+遮る|さえぎる|to interrupt; block
+唱える|となえる|to recite; advocate
+慕う|したう|to adore; yearn for
+滞る|とどこおる|to be delayed
+綻びる|ほころびる|to come apart; begin to bloom
+`,
+};
+
+/* Four-character idioms: the giant meteor carries one at N3 and above.
+   A leading * marks the common ones used from N3. */
+const YOJI_RAW = `
+*一生懸命|いっしょうけんめい|with all one's might
+*一石二鳥|いっせきにちょう|two birds with one stone
+*十人十色|じゅうにんといろ|to each their own
+*一期一会|いちごいちえ|a once-in-a-lifetime meeting
+*自業自得|じごうじとく|you reap what you sow
+*半信半疑|はんしんはんぎ|half in doubt
+*試行錯誤|しこうさくご|trial and error
+*油断大敵|ゆだんたいてき|carelessness is the worst enemy
+*心機一転|しんきいってん|a fresh start
+*危機一髪|ききいっぱつ|a hair's breadth from danger
+七転八起|しちてんはっき|fall seven times, rise eight
+異口同音|いくどうおん|with one voice
+臨機応変|りんきおうへん|adapting to circumstances
+以心伝心|いしんでんしん|unspoken understanding
+弱肉強食|じゃくにくきょうしょく|survival of the fittest
+有言実行|ゆうげんじっこう|doing what you say
+温故知新|おんこちしん|learning from the past
+大器晩成|たいきばんせい|great talents bloom late
+一部始終|いちぶしじゅう|the whole story
+前代未聞|ぜんだいみもん|unheard of
+単刀直入|たんとうちょくにゅう|straight to the point
+千差万別|せんさばんべつ|infinite variety
+電光石火|でんこうせっか|lightning fast
+天変地異|てんぺんちい|natural cataclysm
+日進月歩|にっしんげっぽ|rapid progress
+五里霧中|ごりむちゅう|completely lost
+一触即発|いっしょくそくはつ|explosive situation
+東奔西走|とうほんせいそう|running around busily
+起死回生|きしかいせい|a dramatic comeback
+用意周到|よういしゅうとう|thoroughly prepared
+`;
+
+function parseVocab() {
+  const out = {};
+  for (const lv of Object.keys(VOCAB_RAW)) {
+    out[lv] = VOCAB_RAW[lv].split('\n').map((s) => s.trim()).filter(Boolean).map((line) => {
+      const [w, r, m] = line.split('|');
+      return { id: lv + ':' + w, lv, w, r: r || w, m };
+    });
+  }
+  out.yoji = YOJI_RAW.split('\n').map((s) => s.trim()).filter(Boolean).map((line) => {
+    const common = line[0] === '*';
+    const [w, r, m] = (common ? line.slice(1) : line).split('|');
+    return { id: 'yoji:' + w, lv: 'yoji', w, r, m, common };
+  });
+  return out;
+}
+const VOCAB = parseVocab();
+</script>
+<script>
+'use strict';
+/* ============================================================
+   ENGINE — utilities, storage, romaji + JIS-kana input matchers
+   ============================================================ */
+
+const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
+const lerp = (a, b, t) => a + (b - a) * t;
+const rand = (a, b) => a + Math.random() * (b - a);
+const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+function shuffle(a) {
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const t = a[i]; a[i] = a[j]; a[j] = t;
+  }
+  return a;
+}
+const toHira = (s) => s.replace(/[ァ-ヶ]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0x60));
+const hasKanji = (s) => /[㐀-鿿々]/.test(s);
+const fmt = (n) => Math.round(n).toLocaleString('en-US');
+
+/* ---------- storage (every access may throw in private modes) ---------- */
+const Store = {
+  ns: 'kotoba-meteor/',
+  get(k, d) {
+    try { const v = localStorage.getItem(this.ns + k); return v == null ? d : JSON.parse(v); }
+    catch (e) { return d; }
+  },
+  set(k, v) { try { localStorage.setItem(this.ns + k, JSON.stringify(v)); } catch (e) { /* ignore */ } },
+  del(k) { try { localStorage.removeItem(this.ns + k); } catch (e) { /* ignore */ } },
+};
+
+/* ---------- romaji tables (MS-IME / Google IME compatible spellings) ---------- */
+const R1 = {
+  'あ': ['a'], 'い': ['i', 'yi'], 'う': ['u', 'wu', 'whu'], 'え': ['e'], 'お': ['o'],
+  'か': ['ka', 'ca'], 'き': ['ki'], 'く': ['ku', 'cu', 'qu'], 'け': ['ke'], 'こ': ['ko', 'co'],
+  'さ': ['sa'], 'し': ['shi', 'si', 'ci'], 'す': ['su'], 'せ': ['se', 'ce'], 'そ': ['so'],
+  'た': ['ta'], 'ち': ['chi', 'ti'], 'つ': ['tsu', 'tu'], 'て': ['te'], 'と': ['to'],
+  'な': ['na'], 'に': ['ni'], 'ぬ': ['nu'], 'ね': ['ne'], 'の': ['no'],
+  'は': ['ha'], 'ひ': ['hi'], 'ふ': ['fu', 'hu'], 'へ': ['he'], 'ほ': ['ho'],
+  'ま': ['ma'], 'み': ['mi'], 'む': ['mu'], 'め': ['me'], 'も': ['mo'],
+  'や': ['ya'], 'ゆ': ['yu'], 'よ': ['yo'],
+  'ら': ['ra'], 'り': ['ri'], 'る': ['ru'], 'れ': ['re'], 'ろ': ['ro'],
+  'わ': ['wa'], 'を': ['wo'], 'ん': ['nn', 'xn', "n'"],
+  'が': ['ga'], 'ぎ': ['gi'], 'ぐ': ['gu'], 'げ': ['ge'], 'ご': ['go'],
+  'ざ': ['za'], 'じ': ['ji', 'zi'], 'ず': ['zu'], 'ぜ': ['ze'], 'ぞ': ['zo'],
+  'だ': ['da'], 'ぢ': ['di'], 'づ': ['du'], 'で': ['de'], 'ど': ['do'],
+  'ば': ['ba'], 'び': ['bi'], 'ぶ': ['bu'], 'べ': ['be'], 'ぼ': ['bo'],
+  'ぱ': ['pa'], 'ぴ': ['pi'], 'ぷ': ['pu'], 'ぺ': ['pe'], 'ぽ': ['po'],
+  'ぁ': ['xa', 'la'], 'ぃ': ['xi', 'li'], 'ぅ': ['xu', 'lu'], 'ぇ': ['xe', 'le'], 'ぉ': ['xo', 'lo'],
+  'ゃ': ['xya', 'lya'], 'ゅ': ['xyu', 'lyu'], 'ょ': ['xyo', 'lyo'], 'ゎ': ['xwa', 'lwa'],
+  'っ': ['xtu', 'ltu', 'xtsu', 'ltsu'], 'ゔ': ['vu'],
+  'ー': ['-'], '、': [','], '。': ['.'], '・': ['/'],
+};
+const R2 = {
+  'きゃ': ['kya'], 'きぃ': ['kyi'], 'きゅ': ['kyu'], 'きぇ': ['kye'], 'きょ': ['kyo'],
+  'ぎゃ': ['gya'], 'ぎぃ': ['gyi'], 'ぎゅ': ['gyu'], 'ぎぇ': ['gye'], 'ぎょ': ['gyo'],
+  'しゃ': ['sha', 'sya'], 'しぃ': ['syi'], 'しゅ': ['shu', 'syu'], 'しぇ': ['she', 'sye'], 'しょ': ['sho', 'syo'],
+  'じゃ': ['ja', 'zya', 'jya'], 'じぃ': ['zyi', 'jyi'], 'じゅ': ['ju', 'zyu', 'jyu'], 'じぇ': ['je', 'zye', 'jye'], 'じょ': ['jo', 'zyo', 'jyo'],
+  'ちゃ': ['cha', 'tya', 'cya'], 'ちぃ': ['tyi', 'cyi'], 'ちゅ': ['chu', 'tyu', 'cyu'], 'ちぇ': ['che', 'tye', 'cye'], 'ちょ': ['cho', 'tyo', 'cyo'],
+  'ぢゃ': ['dya'], 'ぢぃ': ['dyi'], 'ぢゅ': ['dyu'], 'ぢぇ': ['dye'], 'ぢょ': ['dyo'],
+  'にゃ': ['nya'], 'にぃ': ['nyi'], 'にゅ': ['nyu'], 'にぇ': ['nye'], 'にょ': ['nyo'],
+  'ひゃ': ['hya'], 'ひぃ': ['hyi'], 'ひゅ': ['hyu'], 'ひぇ': ['hye'], 'ひょ': ['hyo'],
+  'びゃ': ['bya'], 'びぃ': ['byi'], 'びゅ': ['byu'], 'びぇ': ['bye'], 'びょ': ['byo'],
+  'ぴゃ': ['pya'], 'ぴぃ': ['pyi'], 'ぴゅ': ['pyu'], 'ぴぇ': ['pye'], 'ぴょ': ['pyo'],
+  'みゃ': ['mya'], 'みぃ': ['myi'], 'みゅ': ['myu'], 'みぇ': ['mye'], 'みょ': ['myo'],
+  'りゃ': ['rya'], 'りぃ': ['ryi'], 'りゅ': ['ryu'], 'りぇ': ['rye'], 'りょ': ['ryo'],
+  'ふぁ': ['fa'], 'ふぃ': ['fi'], 'ふぇ': ['fe'], 'ふぉ': ['fo'], 'ふゅ': ['fyu'],
+  'てぃ': ['thi'], 'てゅ': ['thu'], 'でぃ': ['dhi'], 'でゅ': ['dhu'],
+  'とぅ': ['twu'], 'どぅ': ['dwu'],
+  'うぃ': ['wi', 'whi'], 'うぇ': ['we', 'whe'], 'うぉ': ['who'],
+  'ゔぁ': ['va'], 'ゔぃ': ['vi'], 'ゔぇ': ['ve'], 'ゔぉ': ['vo'],
+  'つぁ': ['tsa'], 'つぃ': ['tsi'], 'つぇ': ['tse'], 'つぉ': ['tso'],
+  'くぁ': ['qa', 'kwa'], 'くぃ': ['qi'], 'くぇ': ['qe'], 'くぉ': ['qo'], 'ぐぁ': ['gwa'],
+  'いぇ': ['ye'],
+};
+const SMALL_KANA = 'ぁぃぅぇぉゃゅょゎ';
+const DOUBLE_OK = 'bcdfghjkmpqrstvwyz'; // consonants that may be doubled for っ
+
+/* The guide shows the spellings the player actually uses (si vs shi, etc.). */
+const RomajiPrefs = {
+  map: Store.get('rpref', {}),
+  ver: 0,
+  set(k, r) {
+    if (this.map[k] === r) return;
+    this.map[k] = r; this.ver++;
+    Store.set('rpref', this.map);
+  },
+};
+function prefOrder(key, list) {
+  const p = RomajiPrefs.map[key];
+  if (!p || list[0] === p || !list.includes(p)) return list;
+  return [p, ...list.filter((x) => x !== p)];
+}
+
+/* RomajiMatcher: incremental matcher that accepts every valid spelling.
+   State = kana position + the keys typed for the chunk in progress. */
+class RomajiMatcher {
+  constructor(reading) {
+    this.kind = 'romaji';
+    this.s = toHira(reading);
+    this.n = this.s.length;
+    this.reset();
+    this.total = this.guide().length;
+  }
+  reset() { this.pos = 0; this.buf = ''; this.typed = ''; this._g = null; }
+  get done() { return this.pos >= this.n; }
+
+  /* candidate spellings for the chunk starting at kana index i: [romaji, kanaLength] */
+  cands(i) {
+    const s = this.s, n = this.n;
+    if (i >= n) return [];
+    const c = s[i];
+    const out = [];
+    if (c === 'っ') {
+      const nx = s[i + 1];
+      if (nx && nx !== 'っ' && nx !== 'ん' && nx !== 'ー') {
+        for (const [r, len] of this.cands(i + 1)) {
+          if (DOUBLE_OK.includes(r[0])) out.push([r[0] + r, len + 1]);
+          if (r.startsWith('ch')) out.push(['t' + r, len + 1]);
+        }
+      }
+      for (const r of R1['っ']) out.push([r, 1]);
+      return out;
+    }
+    if (c === 'ん') {
+      // a single "n" is only safe when the next chunk cannot start with a vowel, y or n
+      let single = false;
+      if (i + 1 < n) {
+        const nx = this.cands(i + 1);
+        single = nx.length > 0 && nx.every(([r]) => !"aiueoyn'".includes(r[0]));
+      }
+      const preferNN = RomajiPrefs.map['ん'] === 'nn';
+      if (single && !preferNN) out.push(['n', 1]);
+      for (const r of R1['ん']) out.push([r, 1]);
+      if (single && preferNN) out.push(['n', 1]);
+      return out;
+    }
+    if (i + 1 < n && SMALL_KANA.includes(s[i + 1])) {
+      const two = c + s[i + 1];
+      if (R2[two]) for (const r of prefOrder(two, R2[two])) out.push([r, 2]);
+    }
+    if (R1[c]) for (const r of prefOrder(c, R1[c])) out.push([r, 1]);
+    return out;
+  }
+
+  step(pos, buf, key) {
+    if (pos >= this.n) return null;
+    const cs = this.cands(pos);
+    const nb = buf + key;
+    let exact = null, longer = false;
+    for (const cand of cs) {
+      const r = cand[0];
+      if (r.length >= nb.length && r.startsWith(nb)) {
+        if (r.length === nb.length) { if (!exact) exact = cand; } else longer = true;
+      }
+    }
+    if (exact && !longer) return { pos: pos + exact[1], buf: '', fins: [[pos, exact]] };
+    if (exact || longer) return { pos, buf: nb, fins: [] };
+    // "n" was complete on its own: close it and try the key on the next chunk
+    if (buf) {
+      const doneCand = cs.find((cand) => cand[0] === buf);
+      if (doneCand) {
+        const res = this.step(pos + doneCand[1], '', key);
+        if (res) { res.fins.unshift([pos, doneCand]); return res; }
+      }
+    }
+    return null;
+  }
+
+  /* returns true if the key was accepted (state advances), false otherwise (no change) */
+  input(key) {
+    const st = this.step(this.pos, this.buf, key);
+    if (!st) return false;
+    for (const [p, cand] of st.fins) this.learn(p, cand);
+    this.pos = st.pos; this.buf = st.buf; this.typed += key; this._g = null;
+    return true;
+  }
+
+  learn(p, cand) {
+    const [r, len] = cand;
+    const kana = this.s.substr(p, len);
+    if (kana[0] === 'ん') return;
+    if (kana[0] === 'っ') {
+      if (len > 1 && r[0] !== 'x' && r[0] !== 'l') {
+        const k2 = kana.slice(1), inner = r.slice(1);
+        if ((R1[k2] && R1[k2].includes(inner)) || (R2[k2] && R2[k2].includes(inner))) RomajiPrefs.set(k2, inner);
+      }
+      return;
+    }
+    const table = len === 2 ? R2 : R1;
+    if (table[kana] && table[kana].length > 1) RomajiPrefs.set(kana, r);
+  }
+
+  /* the remaining keys, following the player's preferred spellings */
+  guide() {
+    if (this._g !== null && this._gv === RomajiPrefs.ver) return this._g;
+    let out = '', pos = this.pos;
+    if (this.buf) {
+      const cs = this.cands(pos);
+      const pk = cs.find((c) => c[0] === this.buf) || cs.find((c) => c[0].startsWith(this.buf));
+      if (pk) { out += pk[0].slice(this.buf.length); pos += pk[1]; }
+    }
+    while (pos < this.n) {
+      const cs = this.cands(pos);
+      if (!cs.length) { out += '?'; pos++; continue; }
+      out += cs[0][0]; pos += cs[0][1];
+    }
+    this._g = out; this._gv = RomajiPrefs.ver;
+    return out;
+  }
+  nextChar() { return this.guide()[0] || ''; }
+  typedKana() { return this.s.slice(0, this.pos); }
+}
+
+/* ---------- JIS kana layout (by physical key: event.code) ---------- */
+const JIS_KANA = {
+  Digit1: ['ぬ'], Digit2: ['ふ'], Digit3: ['あ', 'ぁ'], Digit4: ['う', 'ぅ'], Digit5: ['え', 'ぇ'], Digit6: ['お', 'ぉ'],
+  Digit7: ['や', 'ゃ'], Digit8: ['ゆ', 'ゅ'], Digit9: ['よ', 'ょ'], Digit0: ['わ', 'を'], Minus: ['ほ'], Equal: ['へ'], IntlYen: ['ー'],
+  KeyQ: ['た'], KeyW: ['て'], KeyE: ['い', 'ぃ'], KeyR: ['す'], KeyT: ['か'], KeyY: ['ん'], KeyU: ['な'], KeyI: ['に'],
+  KeyO: ['ら'], KeyP: ['せ'], BracketLeft: ['゛'], BracketRight: ['゜', '「'],
+  KeyA: ['ち'], KeyS: ['と'], KeyD: ['し'], KeyF: ['は'], KeyG: ['き'], KeyH: ['く'], KeyJ: ['ま'], KeyK: ['の'],
+  KeyL: ['り'], Semicolon: ['れ'], Quote: ['け'], Backslash: ['む', '」'],
+  KeyZ: ['つ', 'っ'], KeyX: ['さ'], KeyC: ['そ'], KeyV: ['ひ'], KeyB: ['こ'], KeyN: ['み'], KeyM: ['も'],
+  Comma: ['ね', '、'], Period: ['る', '。'], Slash: ['め', '・'], IntlRo: ['ろ'],
+};
+const KANA_TO_KEY = {};
+for (const code of Object.keys(JIS_KANA)) {
+  JIS_KANA[code].forEach((k, i) => { if (!(k in KANA_TO_KEY)) KANA_TO_KEY[k] = { code, shift: i === 1 }; });
+}
+
+/* が → か + ゛ ; ぱ → は + ゜ (exactly how JIS kana typists enter them) */
+function kanaKeystrokes(hira) {
+  const seq = [], owner = [];
+  Array.from(hira).forEach((ch, idx) => {
+    for (const d of ch.normalize('NFD')) {
+      seq.push(d === '゙' ? '゛' : d === '゚' ? '゜' : d);
+      owner.push(idx);
+    }
+  });
+  return { seq, owner };
+}
+
+class KanaMatcher {
+  constructor(reading) {
+    this.kind = 'kana';
+    this.s = toHira(reading);
+    this.n = this.s.length;
+    const k = kanaKeystrokes(this.s);
+    this.seq = k.seq; this.owner = k.owner;
+    this.total = this.seq.length;
+    this.reset();
+  }
+  reset() { this.i = 0; this.typed = ''; }
+  get done() { return this.i >= this.seq.length; }
+  get pos() { return this.i >= this.seq.length ? this.n : this.owner[this.i]; }
+  input(k) {
+    if (this.seq[this.i] !== k) return false;
+    this.typed += k; this.i++;
+    return true;
+  }
+  guide() { return this.seq.slice(this.i).join(''); }
+  nextChar() { return this.seq[this.i] || ''; }
+  /* typed kana so far; a base kana waiting for its ゛ is shown on its own */
+  typedKana() {
+    let out = this.s.slice(0, this.pos);
+    if (this.i > 0 && this.i < this.seq.length && this.owner[this.i - 1] === this.owner[this.i]) out += this.seq[this.i - 1];
+    return out;
+  }
+}
+
+function makeMatcher(reading, input) {
+  return input === 'kana' ? new KanaMatcher(reading) : new RomajiMatcher(reading);
+}
+
+/* ---------- keyboard events → tokens ---------- */
+const ROMAJI_CODE = { Minus: '-', Comma: ',', Period: '.', Slash: '/', Quote: "'", IntlYen: '-' };
+function romajiToken(e) {
+  let k = e.key;
+  if (k && k.length === 1) {
+    const cc = k.charCodeAt(0);
+    if (cc >= 0xFF01 && cc <= 0xFF5E) k = String.fromCharCode(cc - 0xFEE0); // full-width ASCII
+    if (k === 'ー') k = '-';
+    k = k.toLowerCase();
+    if (/^[a-z\-,.'\/]$/.test(k)) return k;
+    if (cc < 0x80) return null; // other ASCII (digits, symbols)
+    // non-ASCII (e.g. the OS is in kana mode): fall back to the physical key
+  }
+  const c = e.code || '';
+  if (/^Key[A-Z]$/.test(c)) return c.slice(3).toLowerCase();
+  return ROMAJI_CODE[c] || null;
+}
+function kanaToken(e) {
+  const m = JIS_KANA[e.code];
+  if (!m) return null;
+  return e.shiftKey && m[1] ? m[1] : m[0];
+}
+function codeForRomaji(ch) {
+  if (/^[a-z]$/.test(ch)) return 'Key' + ch.toUpperCase();
+  return { '-': 'Minus', ',': 'Comma', '.': 'Period', '/': 'Slash', "'": 'Quote' }[ch] || null;
+}
+
+/* ---------- learning record ---------- */
+/* per word: c = right without hint, g = right with hint, m = wrong keys, h = reached the shield */
+const Stats = {
+  data: Store.get('stats', {}),
+  dirty: false,
+  get(id) { return this.data[id] || { c: 0, g: 0, m: 0, h: 0 }; },
+  bump(e, kind) {
+    const s = this.data[e.id] || (this.data[e.id] = { c: 0, g: 0, m: 0, h: 0 });
+    s[kind] = (s[kind] || 0) + 1;
+    this.dirty = true;
+  },
+  save() { if (this.dirty) { Store.set('stats', this.data); this.dirty = false; } },
+  weakScore(id) { const s = this.get(id); return 3 * s.h + s.g + 0.5 * s.m - 2 * s.c; },
+  isWeak(id) { return this.weakScore(id) > 0; },
+  seen(id) { const s = this.get(id); return s.c + s.g + s.h > 0; },
+  mastered(id) { const s = this.get(id); return s.c > 0 && this.weakScore(id) <= 0; },
+  weight(e) { return 1 + Math.max(0, this.weakScore(e.id)) * 0.7 + (this.seen(e.id) ? 0 : 0.5); },
+  reset() { this.data = {}; this.dirty = false; Store.del('stats'); },
+};
+
+/* weighted sample without replacement: weak and unseen words come up more often */
+function pickWords(pool, n) {
+  return pool
+    .map((e) => ({ e, k: Math.pow(Math.random(), 1 / Stats.weight(e)) }))
+    .sort((a, b) => b.k - a.k)
+    .slice(0, n)
+    .map((x) => x.e);
+}
+</script>
+<script>
+'use strict';
+/* ============================================================
+   AUDIO — synthesized sound effects, procedural music, read-aloud
+   (no audio files: everything is generated with Web Audio)
+   ============================================================ */
+
+const Sound = {
+  ctx: null, out: null, sfx: null, music: null, noiseBuf: null,
+  enabled: () => (typeof settings === 'undefined' ? true : settings.sfx),
+
+  init() {
+    if (this.ctx) { if (this.ctx.state === 'suspended') this.ctx.resume().catch(() => {}); return; }
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    try { this.ctx = new AC(); } catch (e) { return; }
+    const c = this.ctx;
+    this.out = c.createDynamicsCompressor();
+    this.out.connect(c.destination);
+    this.sfx = c.createGain(); this.sfx.gain.value = 0.55; this.sfx.connect(this.out);
+    this.music = c.createGain(); this.music.gain.value = 0.3; this.music.connect(this.out);
+    const len = c.sampleRate;
+    this.noiseBuf = c.createBuffer(1, len, c.sampleRate);
+    const d = this.noiseBuf.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+  },
+
+  tone({ type = 'sine', f0 = 440, f1 = 0, dur = 0.12, vol = 0.2, at = 0, attack = 0.004, dest = null }) {
+    const c = this.ctx, t = c.currentTime + at;
+    const o = c.createOscillator(), g = c.createGain();
+    o.type = type;
+    o.frequency.setValueAtTime(f0, t);
+    if (f1) o.frequency.exponentialRampToValueAtTime(Math.max(1, f1), t + dur);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol, t + attack);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g); g.connect(dest || this.sfx);
+    o.start(t); o.stop(t + dur + 0.03);
+  },
+
+  noise({ dur = 0.4, vol = 0.3, f0 = 2000, f1 = 200, q = 0.7, type = 'lowpass', at = 0, dest = null }) {
+    const c = this.ctx, t = c.currentTime + at;
+    const s = c.createBufferSource(); s.buffer = this.noiseBuf; s.loop = true;
+    const f = c.createBiquadFilter(); f.type = type; f.Q.value = q;
+    f.frequency.setValueAtTime(f0, t);
+    f.frequency.exponentialRampToValueAtTime(Math.max(20, f1), t + dur);
+    const g = c.createGain();
+    g.gain.setValueAtTime(vol, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    s.connect(f); f.connect(g); g.connect(dest || this.sfx);
+    s.start(t, Math.random() * 0.5); s.stop(t + dur + 0.03);
+  },
+
+  play(name) {
+    if (!this.ctx || !this.enabled()) return;
+    if (this.ctx.state === 'suspended') this.ctx.resume().catch(() => {});
+    const T = (o) => this.tone(o), N = (o) => this.noise(o);
+    switch (name) {
+      case 'type': {
+        const f = 1500 * rand(0.94, 1.06);
+        T({ type: 'square', f0: f, f1: f * 0.42, dur: 0.055, vol: 0.045 });
+        break;
+      }
+      case 'miss':
+        T({ type: 'sawtooth', f0: 170, f1: 85, dur: 0.14, vol: 0.09 });
+        T({ type: 'square', f0: 110, dur: 0.1, vol: 0.035 });
+        break;
+      case 'boom':
+        N({ dur: 0.55, vol: 0.42, f0: 2600, f1: 110 });
+        T({ type: 'sine', f0: 150, f1: 40, dur: 0.36, vol: 0.32 });
+        break;
+      case 'bigboom':
+        N({ dur: 1.5, vol: 0.6, f0: 3200, f1: 50, q: 0.5 });
+        T({ type: 'sine', f0: 95, f1: 24, dur: 1.1, vol: 0.5 });
+        N({ dur: 0.5, vol: 0.25, f0: 5000, f1: 800, type: 'bandpass', at: 0.25 });
+        N({ dur: 0.4, vol: 0.2, f0: 4000, f1: 600, type: 'bandpass', at: 0.55 });
+        break;
+      case 'hit':
+        N({ dur: 0.85, vol: 0.6, f0: 1100, f1: 60 });
+        T({ type: 'square', f0: 72, f1: 30, dur: 0.5, vol: 0.22 });
+        T({ type: 'sawtooth', f0: 240, f1: 60, dur: 0.4, vol: 0.09 });
+        break;
+      case 'combo':
+        T({ type: 'triangle', f0: 1046, dur: 0.09, vol: 0.08 });
+        T({ type: 'triangle', f0: 1568, dur: 0.14, vol: 0.08, at: 0.07 });
+        break;
+      case 'wave':
+        [523, 659, 784, 1046].forEach((f, i) => T({ type: 'triangle', f0: f, dur: 0.16, vol: 0.09, at: i * 0.08 }));
+        break;
+      case 'alarm':
+        for (let i = 0; i < 3; i++) {
+          T({ type: 'square', f0: 660, dur: 0.18, vol: 0.06, at: i * 0.44 });
+          T({ type: 'square', f0: 440, dur: 0.18, vol: 0.06, at: i * 0.44 + 0.21 });
+        }
+        break;
+      case 'clear':
+        [523, 659, 784, 1046, 1318].forEach((f, i) => T({ type: 'triangle', f0: f, dur: 0.22, vol: 0.1, at: i * 0.09 }));
+        [523, 659, 784].forEach((f) => T({ type: 'sine', f0: f, dur: 1.2, vol: 0.06, at: 0.5 }));
+        break;
+      case 'over':
+        [392, 349, 311, 233].forEach((f, i) => T({ type: 'sawtooth', f0: f, f1: f * 0.97, dur: 0.32, vol: 0.06, at: i * 0.22 }));
+        break;
+      case 'lock':
+        T({ type: 'sine', f0: 1320, dur: 0.05, vol: 0.04 });
+        break;
+      case 'release':
+        T({ type: 'sine', f0: 620, f1: 300, dur: 0.09, vol: 0.05 });
+        break;
+      case 'hint':
+        T({ type: 'triangle', f0: 700, f1: 940, dur: 0.12, vol: 0.06 });
+        break;
+      case 'ok':
+        T({ type: 'triangle', f0: 880, dur: 0.1, vol: 0.08 });
+        T({ type: 'triangle', f0: 1318, dur: 0.18, vol: 0.08, at: 0.07 });
+        break;
+      case 'stamp':
+        N({ dur: 0.18, vol: 0.35, f0: 900, f1: 120 });
+        T({ type: 'sine', f0: 120, f1: 60, dur: 0.18, vol: 0.3 });
+        break;
+      case 'select':
+        T({ type: 'sine', f0: 980, dur: 0.035, vol: 0.035 });
+        break;
+      default: break;
+    }
+  },
+};
+
+/* Procedural music: a slow minor-ninth loop for missions, a tenser one for the giant meteor. */
+const Music = {
+  on: false, timer: null, next: 0, step: 0, mode: 'calm', send: null,
+  CALM: [[62, 65, 69, 72, 76], [58, 62, 65, 69, 72], [53, 57, 60, 64, 67], [60, 64, 67, 71, 74]],
+  BOSS: [[62, 65, 69, 74], [63, 67, 70, 75], [58, 62, 65, 70], [61, 64, 67, 70]],
+  hz: (m) => 440 * Math.pow(2, (m - 69) / 12),
+
+  ensureFx() {
+    if (this.send) return;
+    const c = Sound.ctx;
+    const d = c.createDelay(1); d.delayTime.value = 0.36;
+    const fb = c.createGain(); fb.gain.value = 0.3;
+    const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 2200;
+    d.connect(lp); lp.connect(fb); fb.connect(d); lp.connect(Sound.music);
+    this.send = d;
+  },
+  start(mode = 'calm') {
+    this.mode = mode;
+    if (!Sound.ctx || !settings.bgm || this.on) return;
+    this.ensureFx();
+    this.on = true;
+    this.next = Sound.ctx.currentTime + 0.1;
+    this.step = 0;
+    this.timer = setInterval(() => this.pump(), 60);
+  },
+  stop() { this.on = false; clearInterval(this.timer); this.timer = null; },
+  setMode(m) { this.mode = m; },
+  pump() {
+    const c = Sound.ctx;
+    if (!c || !this.on) return;
+    if (c.state !== 'running') { this.next = c.currentTime + 0.1; return; }
+    const spb = this.mode === 'boss' ? 60 / 136 / 2 : 60 / 96 / 2;
+    while (this.next < c.currentTime + 0.25) {
+      this.note(this.step, this.next, spb);
+      this.next += spb; this.step++;
+    }
+  },
+  voice(type, freq, t, dur, vol, cutoff) {
+    const c = Sound.ctx;
+    const o = c.createOscillator(), g = c.createGain(), f = c.createBiquadFilter();
+    o.type = type; o.frequency.value = freq;
+    f.type = 'lowpass'; f.frequency.value = cutoff;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol, t + Math.min(0.02, dur * 0.2));
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(f); f.connect(g); g.connect(Sound.music);
+    o.start(t); o.stop(t + dur + 0.05);
+    return g;
+  },
+  note(step, t, spb) {
+    const boss = this.mode === 'boss';
+    const prog = boss ? this.BOSS : this.CALM;
+    const s = step % 8, ch = prog[Math.floor(step / 8) % prog.length];
+    const pat = boss ? [0, 1, 2, 3, 2, 1, 3, 2] : [0, 2, 4, 2, 3, 1, 4, 3];
+    const lead = this.voice('triangle', this.hz(ch[pat[s] % ch.length] + 12), t, spb * 1.7, boss ? 0.05 : 0.04, 3200);
+    lead.connect(this.send);
+    if (s === 0 || s === 4) this.voice('sine', this.hz(ch[0] - 24), t, spb * 3.6, 0.11, 600);
+    if (s === 0) ch.slice(0, 4).forEach((m, i) => this.voice('sawtooth', this.hz(m) * (1 + (i - 1.5) * 0.002), t, spb * 8.4, 0.012, 900));
+    if (boss) {
+      const c = Sound.ctx, n = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain();
+      n.buffer = Sound.noiseBuf; f.type = 'highpass'; f.frequency.value = 7000;
+      g.gain.setValueAtTime(s % 2 ? 0.012 : 0.025, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.05);
+      n.connect(f); f.connect(g); g.connect(Sound.music); n.start(t, Math.random() * 0.5); n.stop(t + 0.06);
+    }
+  },
+};
+
+/* Read-aloud through the browser's Japanese voice, when the device has one. */
+const Speech = {
+  voice: null,
+  init() {
+    if (!('speechSynthesis' in window)) return;
+    const pickVoice = () => {
+      const vs = window.speechSynthesis.getVoices() || [];
+      this.voice = vs.find((v) => /ja[-_]JP/i.test(v.lang) && /google|kyoko|o-ren|haruka|nanami/i.test(v.name))
+        || vs.find((v) => /ja[-_]JP/i.test(v.lang)) || vs.find((v) => /^ja/i.test(v.lang)) || null;
+    };
+    pickVoice();
+    try { window.speechSynthesis.addEventListener('voiceschanged', pickVoice); } catch (e) { window.speechSynthesis.onvoiceschanged = pickVoice; }
+  },
+  available() { return !!this.voice; },
+  /* force: an explicit tap on a speaker button speaks even when auto read-aloud is off */
+  say(text, rate = 1, force = false) {
+    if ((!settings.voice && !force) || !this.voice) return false;
+    try {
+      window.speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = 'ja-JP'; u.voice = this.voice; u.rate = rate; u.volume = 0.9;
+      window.speechSynthesis.speak(u);
+      return true;
+    } catch (e) { return false; }
+  },
+  stop() { try { window.speechSynthesis.cancel(); } catch (e) { /* ignore */ } },
+};
+</script>
+<script>
+'use strict';
+/* ============================================================
+   GAME — starfield, planet, and the meteor-defense mission
+   Logical stage is 1280×720; the canvas scales it to fit.
+   ============================================================ */
+
+const W = 1280, H = 720;
+const FONT = {
+  body: '"BIZ UDPGothic", "Hiragino Sans", "Yu Gothic", "Noto Sans JP", sans-serif',
+  card: '"Klee One", "BIZ UDPGothic", "Hiragino Mincho ProN", "Yu Mincho", serif',
+  hud: '"Chakra Petch", "BIZ UDPGothic", ui-monospace, Menlo, monospace',
+  display: '"Dela Gothic One", "BIZ UDPGothic", sans-serif',
+};
+/* canvas colors mirror the CSS tokens; readColors() refreshes them from :root */
+const COL = { space: '#070a1c', star: '#e8ecff', beam: '#6ff3ff', gold: '#ffc94a', shu: '#ee4b2b', paper: '#f5efdf', ink: '#1c2242', pencil: '#5d6584', haze: '#a3acd3' };
+function readColors() {
+  try {
+    const cs = getComputedStyle(document.documentElement);
+    for (const k of Object.keys(COL)) { const v = cs.getPropertyValue('--' + k).trim(); if (/^#[0-9a-f]{6}$/i.test(v)) COL[k] = v; }
+  } catch (e) { /* keep defaults */ }
+}
+const rgba = (hex, a) => { const n = parseInt(hex.slice(1), 16); return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`; };
+const REDUCED = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+const DIFF = {
+  easy: { base: 6.0, perKey: 1.0, maxActive: 3, gap: 4.2 },
+  normal: { base: 4.5, perKey: 0.7, maxActive: 4, gap: 3.0 },
+  hard: { base: 3.2, perKey: 0.48, maxActive: 5, gap: 2.0 },
+};
+
+const CANNON = { x: 640, y: 632 };
+const BAR = { cx: 640, cy: 520 + 3800, r: 3800 };              // shield arc, top at y=520
+const barrierY = (x) => BAR.cy - Math.sqrt(BAR.r * BAR.r - (x - BAR.cx) * (x - BAR.cx));
+const barrierAng = (x) => Math.atan2(barrierY(x) - BAR.cy, x - BAR.cx);
+const PLANET = { cx: 640, cy: 640 + 1250, r: 1250 };           // planet surface, top at y=640
+
+function rr(ctx, x, y, w, h, r) {
+  r = Math.min(r, w / 2, h / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+function mulberry32(a) {
+  return function () {
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/* ---------------- background sky (screen space) ---------------- */
+const Sky = {
+  w: 0, h: 0, stars: [], neb: null, t: 0, streaks: [], streakT: 4,
+  resize(w, h) {
+    this.w = w; this.h = h;
+    const n = Math.min(900, Math.round((w * h) / 2300));
+    const tints = ['#e8ecff', '#e8ecff', '#e8ecff', '#ffe3ad', '#b2ecff'];
+    this.stars = [];
+    for (let i = 0; i < n; i++) {
+      const z = Math.random() < 0.62 ? 0 : Math.random() < 0.72 ? 1 : 2;
+      this.stars.push({ x: Math.random() * w, y: Math.random() * h, z, s: [0.8, 1.2, 1.8][z] * rand(0.75, 1.25), ph: rand(0, 6.283), f: rand(0.6, 2.4), c: pick(tints) });
+    }
+    this.neb = this.makeNebula(w, h);
+  },
+  makeNebula(w, h) {
+    const c = document.createElement('canvas');
+    const sw = Math.max(1, Math.round(w / 2)), sh = Math.max(1, Math.round(h / 2));
+    c.width = sw; c.height = sh;
+    const g = c.getContext('2d');
+    const m = Math.max(sw, sh);
+    const blob = (x, y, r, col) => {
+      const gr = g.createRadialGradient(x, y, 0, x, y, r);
+      gr.addColorStop(0, col); gr.addColorStop(1, 'rgba(0,0,0,0)');
+      g.fillStyle = gr; g.fillRect(0, 0, sw, sh);
+    };
+    blob(sw * 0.84, sh * 0.16, m * 0.55, 'rgba(58, 48, 140, 0.32)');
+    blob(sw * 0.1, sh * 0.7, m * 0.5, 'rgba(16, 104, 140, 0.22)');
+    blob(sw * 0.48, sh * 0.0, m * 0.32, 'rgba(150, 56, 112, 0.13)');
+    blob(sw * 0.97, sh * 0.66, m * 0.22, 'rgba(255, 190, 90, 0.07)');
+    return c;
+  },
+  update(dt) {
+    this.t += dt;
+    for (const s of this.stars) {
+      s.y += (s.z + 1) * 2.4 * dt;
+      if (s.y > this.h + 2) { s.y = -2; s.x = Math.random() * this.w; }
+    }
+    this.streakT -= dt;
+    if (this.streakT <= 0 && !REDUCED) {
+      this.streakT = rand(5, 11);
+      this.streaks.push({ x: rand(this.w * 0.3, this.w * 1.1), y: rand(-20, this.h * 0.35), vx: -rand(520, 820), vy: rand(150, 280), life: 0.9, max: 0.9 });
+    }
+    for (const s of this.streaks) { s.x += s.vx * dt; s.y += s.vy * dt; s.life -= dt; }
+    this.streaks = this.streaks.filter((s) => s.life > 0);
+  },
+  draw(ctx) {
+    ctx.fillStyle = COL.space;
+    ctx.fillRect(0, 0, this.w, this.h);
+    if (this.neb) ctx.drawImage(this.neb, 0, 0, this.w, this.h);
+    const t = this.t;
+    for (const s of this.stars) {
+      const tw = s.z === 0 ? 0.6 : 0.5 + 0.5 * Math.sin(t * s.f + s.ph);
+      ctx.globalAlpha = [0.4, 0.65, 0.95][s.z] * (0.5 + 0.5 * tw);
+      ctx.fillStyle = s.c;
+      ctx.fillRect(s.x, s.y, s.s, s.s);
+    }
+    ctx.globalAlpha = 1;
+    for (const s of this.streaks) {
+      const a = s.life / s.max, tx = s.x - s.vx * 0.12, ty = s.y - s.vy * 0.12;
+      const g = ctx.createLinearGradient(s.x, s.y, tx, ty);
+      g.addColorStop(0, `rgba(232,236,255,${0.8 * a})`); g.addColorStop(1, 'rgba(232,236,255,0)');
+      ctx.strokeStyle = g; ctx.lineWidth = 1.4;
+      ctx.beginPath(); ctx.moveTo(s.x, s.y); ctx.lineTo(tx, ty); ctx.stroke();
+    }
+  },
+};
+
+/* ---------------- planet (pre-rendered once) ---------------- */
+let planetSprite = null;
+function buildPlanet() {
+  const S = 2, top = 596;
+  const c = document.createElement('canvas');
+  c.width = W * S; c.height = (H - top) * S;
+  const g = c.getContext('2d');
+  g.scale(S, S); g.translate(0, -top);
+  const { cx, cy, r } = PLANET;
+  const surf = (x) => cy - Math.sqrt(Math.max(0, r * r - (x - cx) * (x - cx)));
+  let gr = g.createRadialGradient(cx, cy, r - 2, cx, cy, r + 30);
+  gr.addColorStop(0, 'rgba(111,243,255,0.4)'); gr.addColorStop(1, 'rgba(111,243,255,0)');
+  g.fillStyle = gr; g.beginPath(); g.arc(cx, cy, r + 30, 0, Math.PI * 2); g.fill();
+  gr = g.createLinearGradient(0, cy - r, 0, cy - r + 110);
+  gr.addColorStop(0, '#2f7fae'); gr.addColorStop(0.16, '#195281'); gr.addColorStop(0.6, '#0b2a52'); gr.addColorStop(1, '#061630');
+  g.fillStyle = gr; g.beginPath(); g.arc(cx, cy, r, 0, Math.PI * 2); g.fill();
+  g.save(); g.beginPath(); g.arc(cx, cy, r, 0, Math.PI * 2); g.clip();
+  const rnd = mulberry32(11);
+  for (let i = 0; i < 16; i++) {
+    const x = rnd() * W, y = surf(x) + 10 + rnd() * 70;
+    g.fillStyle = `rgba(86, 168, 132, ${0.1 + rnd() * 0.12})`;
+    g.beginPath(); g.ellipse(x, y, 40 + rnd() * 130, 5 + rnd() * 11, (rnd() - 0.5) * 0.15, 0, Math.PI * 2); g.fill();
+  }
+  for (let i = 0; i < 10; i++) {
+    const x = rnd() * W, y = surf(x) + 4 + rnd() * 50;
+    g.fillStyle = `rgba(230, 240, 255, ${0.04 + rnd() * 0.06})`;
+    g.beginPath(); g.ellipse(x, y, 80 + rnd() * 200, 3 + rnd() * 5, 0, 0, Math.PI * 2); g.fill();
+  }
+  for (let i = 0; i < 120; i++) {
+    const x = rnd() * W, y = surf(x) + 6 + rnd() * 60;
+    g.fillStyle = `rgba(255, 214, 140, ${0.25 + rnd() * 0.45})`;
+    g.fillRect(x, y, 1.2, 1.2);
+  }
+  g.restore();
+  g.strokeStyle = 'rgba(190,245,255,0.75)'; g.lineWidth = 1.5;
+  g.beginPath(); g.arc(cx, cy, r, Math.PI * 1.2, Math.PI * 1.8); g.stroke();
+  planetSprite = { c, top };
+}
+function drawPlanet(ctx) {
+  if (!planetSprite) buildPlanet();
+  ctx.drawImage(planetSprite.c, 0, planetSprite.top, W, H - planetSprite.top);
+}
+
+function rockShape(n) {
+  const pts = [];
+  for (let i = 0; i < n; i++) {
+    const a = (i / n) * Math.PI * 2 + rand(-0.12, 0.12);
+    pts.push([Math.cos(a), Math.sin(a), rand(0.78, 1.0)]);
+  }
+  const craters = [];
+  for (let i = 0; i < 3; i++) {
+    const a = rand(0, 6.28), d = rand(0.15, 0.52);
+    craters.push([Math.cos(a) * d, Math.sin(a) * d, rand(0.11, 0.21)]);
+  }
+  return { pts, craters };
+}
+function makeCrack() {
+  const a = rand(0, Math.PI * 2);
+  const pts = [[Math.cos(a) * 0.1, Math.sin(a) * 0.1]];
+  let ang = a, d = 0.1;
+  for (let i = 0; i < 4; i++) { ang += rand(-0.5, 0.5); d += rand(0.18, 0.26); pts.push([Math.cos(ang) * d, Math.sin(ang) * d]); }
+  return pts;
+}
+
+/* ---------------- the mission ---------------- */
+class MeteorGame {
+  constructor() {
+    this.active = false; this.paused = false; this.onEnd = null;
+    this.state = 'idle'; this.meteors = []; this.cands = []; this.primary = null; this.boss = null;
+  }
+
+  start(cfg) {
+    this.cfg = cfg;
+    this.D = DIFF[cfg.diff] || DIFF.normal;
+    this.active = true; this.paused = false; this.finished = false;
+    this.time = 0; this.stateT = 0; this.playTime = 0;
+    this.meteors = []; this.parts = []; this.lasers = []; this.rings = []; this.pops = []; this.flashes = []; this.ripples = [];
+    this.cands = []; this.primary = null;
+    this.score = 0; this.shownScore = 0; this.combo = 0; this.maxCombo = 0; this.comboPop = 0;
+    this.hp = 5; this.maxHp = 5; this.lostAt = -9;
+    this.keysOk = 0; this.keysMiss = 0; this.destroyed = 0; this.hits = 0; this.noHint = 0;
+    this.log = new Map();
+    this.queue = cfg.words.slice(); this.qi = 0;
+    this.shake = 0; this.redFlash = 0; this.barrierFlash = 0; this.missFlash = 0; this.recoil = 0;
+    this.cannonA = -Math.PI / 2;
+    this.boss = null; this.pendingBoss = false; this.banner = null; this.endKind = null;
+    this.waveSpeed = 1; this.waves = null;
+    if (cfg.demo) {
+      this.state = 'play'; this.waveLeft = Infinity; this.spawnT = 0.6; this.aiT = 1.2;
+    } else {
+      const total = clamp(cfg.count || cfg.words.length, 6, 30);
+      const a = Math.round(total * 0.27), b = Math.round(total * 0.33);
+      this.waves = [{ n: a, speed: 1 }, { n: b, speed: 1.12 }, { n: total - a - b, speed: 1.25 }];
+      this.beginWave(0);
+    }
+  }
+  sfx(name) { if (!this.cfg.demo) Sound.play(name); }
+
+  /* ----- flow ----- */
+  beginWave(i) {
+    const w = this.waves[i];
+    this.waveIdx = i; this.waveLeft = w.n; this.waveTotal = w.n; this.waveSpeed = w.speed;
+    this.state = 'banner'; this.stateT = 0;
+    const subs = [this.cfg.subtitle, '隕石が速くなる  ·  Meteors speed up', '最終ウェーブ  ·  Final wave'];
+    this.banner = { title: `WAVE ${i + 1}`, sub: subs[i], dur: 2.2 };
+    this.sfx('wave');
+  }
+  beginBoss() {
+    this.state = 'banner'; this.stateT = 0; this.pendingBoss = true;
+    this.banner = { title: 'WARNING', sub: '巨大隕石 接近中  ·  Giant meteor approaching', dur: 3.0, warn: true };
+    this.sfx('alarm');
+    Music.setMode('boss');
+  }
+  spawnBoss() {
+    const words = this.cfg.bossWords;
+    const m = this.makeMeteor(words[0], { x0: 640, x1: 640, y0: 64, baseR: 86, s0: 0.7, s1: 1.1, boss: true });
+    m.bossWords = words; m.bossIdx = 0; m.cracks = [];
+    let total = 0;
+    for (const w of words) total += this.wordTime(makeMatcher(w.r, this.cfg.input).total);
+    m.T = Math.max(32, total * 1.45);
+    this.boss = m; this.fragT = 5;
+  }
+  end(kind) {
+    if (this.state === 'end') return;
+    this.state = 'end'; this.stateT = 0; this.endKind = kind;
+    this.cands = []; this.primary = null;
+    for (const m of this.meteors) if (!m.dead) { m.dead = true; this.explode(m.x, m.y, m.r, 0.7); }
+    if (kind === 'over') {
+      for (let i = 0; i < 6; i++) { const x = rand(140, W - 140); this.explode(x, barrierY(x), 26, 1.2, true); }
+      this.redFlash = 1; this.shake = 1;
+    }
+    this.banner = kind === 'clear'
+      ? { title: 'MISSION COMPLETE', sub: 'ミッション達成  ·  ことば星は守られた', dur: 99 }
+      : { title: 'SHIELD DOWN', sub: 'シールド崩壊  ·  ふくしゅうして再挑戦しよう', dur: 99, warn: true };
+    this.sfx(kind === 'clear' ? 'clear' : 'over');
+    Music.stop();
+  }
+  finish() {
+    this.finished = true;
+    const total = this.keysOk + this.keysMiss;
+    const r = {
+      mode: 'meteor', kind: this.endKind, score: this.score, destroyed: this.destroyed, hits: this.hits,
+      acc: total ? this.keysOk / total : 1, kpm: this.playTime > 1 ? (this.keysOk / this.playTime) * 60 : 0,
+      maxCombo: this.maxCombo, noHint: this.noHint, log: [...this.log.values()], cfg: this.cfg, time: this.playTime,
+    };
+    this.active = false;
+    if (this.onEnd) this.onEnd(r);
+  }
+
+  /* ----- meteors ----- */
+  wordTime(keys) {
+    const D = this.D, cfg = this.cfg;
+    let T = D.base + D.perKey * keys * (cfg.input === 'kana' ? 1.7 : 1);
+    if (cfg.qmode === 'mean') T *= 1.3;
+    return T;
+  }
+  makeMeteor(entry, o = {}) {
+    const matcher = makeMatcher(entry.r, this.cfg.input);
+    const keys = matcher.total;
+    let x0 = o.x0;
+    if (x0 == null) {
+      const lanes = this.cfg.lanes || [150, 285, 420, 555, 725, 860, 995, 1130];
+      let free = lanes.filter((x) => !this.meteors.some((m) => !m.dead && !m.boss && m.t < 0.45 && Math.abs(m.x0 - x) < 150));
+      if (!free.length) free = lanes;
+      x0 = pick(free) + rand(-24, 24);
+    }
+    const x1 = o.x1 != null ? o.x1 : clamp(lerp(x0, 640, 0.22) + rand(-60, 60), 120, 1160);
+    const baseR = o.baseR || 24 + Math.min(14, keys * 0.8);
+    const s0 = o.s0 || 0.52, s1 = o.s1 || 1.18;
+    const wordT = this.wordTime(keys);
+    const m = {
+      entry, matcher, keys, x0, x1, y0: o.y0 != null ? o.y0 : 104, y1: barrierY(x1) - baseR * s1 * 0.85,
+      t: 0, T: wordT / this.waveSpeed, wordT, age: 0, wordAge: 0, baseR, s0, s1,
+      rot: rand(0, 6.28), vr: rand(-0.9, 0.9), shape: rockShape(o.boss ? 16 : 11), tilt: REDUCED ? 0 : rand(-0.06, 0.06),
+      hinted: false, showHint: false, hintShown: false, misses: 0, dead: false, boss: !!o.boss, hitFx: 0, pop: 0,
+    };
+    const dx = m.x1 - m.x0, dy = m.y1 - m.y0, dl = Math.hypot(dx, dy) || 1;
+    m.dir = [dx / dl, dy / dl];
+    this.place(m);
+    this.meteors.push(m);
+    return m;
+  }
+  place(m) {
+    const ee = Math.pow(clamp(m.t, 0, 1), 1.35);
+    m.ee = ee;
+    m.x = lerp(m.x0, m.x1, ee); m.y = lerp(m.y0, m.y1, ee);
+    const p = clamp(m.age / 0.35, 0, 1);
+    m.pop = 1 - Math.pow(1 - p, 3);
+    m.r = m.baseR * lerp(m.s0, m.s1, ee) * Math.max(0.05, m.pop);
+  }
+  conflicts(e) {
+    const r = toHira(e.r);
+    return this.meteors.some((m) => !m.dead && (m.entry === e || m.matcher.s.startsWith(r) || r.startsWith(m.matcher.s)));
+  }
+  nextEntry() {
+    const n = this.queue.length;
+    for (let k = 0; k < n; k++) {
+      const idx = (this.qi + k) % n, cur = this.qi % n;
+      const e = this.queue[idx];
+      if (!this.conflicts(e)) {
+        this.queue[idx] = this.queue[cur]; this.queue[cur] = e;
+        this.qi++;
+        return e;
+      }
+    }
+    return null;
+  }
+
+  /* ----- input ----- */
+  key(tok) {
+    if (this.state !== 'play' && this.state !== 'boss') return;
+    const pool = this.cands.length ? this.cands : this.meteors.filter((m) => !m.dead);
+    if (!pool.length) return;
+    const acc = [];
+    for (const m of pool) if (m.matcher.input(tok)) acc.push(m);
+    if (!acc.length) { this.miss(); return; }
+    if (this.cands.length) for (const m of this.cands) if (!acc.includes(m)) m.matcher.reset();
+    this.cands = acc;
+    this.keysOk++;
+    this.primary = acc.reduce((a, b) => (b.t > a.t ? b : a));
+    this.fire(this.primary);
+    const done = acc.find((m) => m.matcher.done);
+    if (done) {
+      for (const m of acc) if (m !== done) m.matcher.reset();
+      this.cands = []; this.primary = null;
+      this.complete(done);
+    }
+  }
+  hint() {
+    if (this.state !== 'play' && this.state !== 'boss') return;
+    const live = this.meteors.filter((m) => !m.dead && !m.showHint);
+    const m = (this.primary && !this.primary.showHint) ? this.primary : live.reduce((a, b) => (!a || b.t > a.t ? b : a), null);
+    if (!m) return;
+    m.hinted = true;
+    this.sfx('hint');
+  }
+  release() {
+    if (!this.cands.length) return;
+    for (const m of this.cands) m.matcher.reset();
+    this.cands = []; this.primary = null;
+    this.sfx('release');
+  }
+
+  /* ----- events ----- */
+  fire(m) {
+    const a = Math.atan2(m.y - CANNON.y, m.x - CANNON.x);
+    this.cannonA = a;
+    const mx = CANNON.x + Math.cos(a) * 58, my = CANNON.y + Math.sin(a) * 58;
+    this.lasers.push({ x0: mx, y0: my, x1: m.x + rand(-0.3, 0.3) * m.r, y1: m.y + rand(-0.3, 0.3) * m.r, life: 0.11, max: 0.11 });
+    this.recoil = 1; m.hitFx = 0.09;
+    this.burst(m.x, m.y, REDUCED ? 2 : 5, { colors: [COL.beam, '#ffffff'], speed: [60, 220], life: [0.15, 0.35], size: [1.2, 2.4] });
+    this.sfx('type');
+  }
+  miss() {
+    this.keysMiss++; this.combo = 0; this.missFlash = 1;
+    for (const m of this.cands) {
+      m.misses++; m.hitFx = 0.15;
+      if (m.misses <= 3) this.record(m.entry, 'm');
+    }
+    this.sfx('miss');
+  }
+  complete(m) {
+    const cfg = this.cfg;
+    const usedHint = cfg.furigana !== 'always' && m.hintShown;
+    const base = 10 * m.keys;
+    const prog = m.boss ? clamp(m.wordAge / m.wordT, 0, 1) : clamp(m.t, 0, 1);
+    let pts = base + Math.round(base * (1 - prog) * 0.8);
+    if (cfg.furigana !== 'always' && !usedHint) pts = Math.round(pts * 1.5);
+    this.combo++; this.comboPop = 1;
+    if (this.combo > this.maxCombo) this.maxCombo = this.combo;
+    pts = Math.round(pts * (cfg.mult || 1) * (1 + Math.min(this.combo, 40) * 0.05));
+    if (!cfg.demo) this.score += pts;
+    this.destroyed++;
+    if (!usedHint) this.noHint++;
+    this.record(m.entry, usedHint ? 'g' : 'c');
+    if (!cfg.demo) Speech.say(m.entry.r, 1.05);
+    if (this.combo % 10 === 0) this.sfx('combo');
+    this.learnPop(m, cfg.demo ? null : `+${fmt(pts)}`, cfg.demo ? null : usedHint ? '△' : '○', false);
+    if (m.boss) { this.bossWordDone(m); return; }
+    m.dead = true;
+    this.explode(m.x, m.y, m.r, 1);
+  }
+  bossWordDone(m) {
+    this.explode(m.x + rand(-0.4, 0.4) * m.r, m.y + rand(-0.3, 0.3) * m.r, m.r * 0.45, 0.8);
+    m.cracks.push(makeCrack());
+    m.bossIdx++;
+    if (m.bossIdx >= m.bossWords.length) {
+      m.dead = true; this.boss = null;
+      const bonus = Math.round(1000 * (this.cfg.mult || 1));
+      this.score += bonus;
+      this.explode(m.x, m.y, m.r, 3.2);
+      this.pops.push({ x: m.x, y: m.y - 40, rise: 60, life: 2.4, max: 2.4, lines: [{ t: `BOSS BONUS +${fmt(bonus)}`, f: `700 26px ${FONT.hud}`, c: COL.gold }] });
+      this.end('clear');
+      return;
+    }
+    m.entry = m.bossWords[m.bossIdx];
+    m.matcher = makeMatcher(m.entry.r, this.cfg.input);
+    m.keys = m.matcher.total; m.wordT = this.wordTime(m.keys);
+    m.hinted = false; m.showHint = false; m.hintShown = false; m.misses = 0; m.wordAge = 0;
+    m.t = Math.max(0, m.t - 0.06); m.hitFx = 0.4;
+    this.shake = Math.max(this.shake, 0.35);
+  }
+  impact(m) {
+    m.dead = true;
+    if (this.cfg.demo) { this.explode(m.x, m.y, m.r, 0.8); return; }
+    this.hp = Math.max(0, this.hp - (m.boss ? 3 : 1));
+    this.lostAt = this.time;
+    this.hits++; this.combo = 0;
+    this.record(m.entry, 'h');
+    this.cands = this.cands.filter((x) => x !== m);
+    if (this.primary === m) this.primary = this.cands[0] || null;
+    const bx = m.x, by = barrierY(m.x);
+    this.explode(bx, by - 6, m.r, m.boss ? 2.4 : 1.1, true);
+    this.ripples.push({ x: bx, life: 0.9, max: 0.9 });
+    this.redFlash = 1; this.barrierFlash = 1; this.shake = Math.max(this.shake, m.boss ? 1 : 0.55);
+    this.sfx('hit');
+    this.learnPop(m, null, '×', true);
+    if (m.boss) this.boss = null;
+    if (this.hp <= 0) this.end('over');
+    else if (m.boss) this.end('clear');
+  }
+  record(e, kind) {
+    if (this.cfg.demo) return;
+    let L = this.log.get(e.id);
+    if (!L) this.log.set(e.id, (L = { e, c: 0, g: 0, m: 0, h: 0 }));
+    L[kind]++;
+    Stats.bump(e, kind);
+  }
+
+  /* ----- effects ----- */
+  learnPop(m, scoreText, mark, bad) {
+    const e = m.entry, lines = [];
+    if (scoreText) lines.push({ t: scoreText, f: `700 22px ${FONT.hud}`, c: COL.gold });
+    lines.push({ t: hasKanji(e.w) ? `${e.w}（${e.r}）` : e.w, f: `600 19px ${FONT.card}`, c: bad ? '#ffc2b6' : COL.star });
+    lines.push({ t: e.m, f: `400 13px ${FONT.body}`, c: COL.haze });
+    const y = bad ? barrierY(m.x) - 70 : Math.max(136, m.y - 8);
+    this.pops.push({ x: clamp(m.x, 150, W - 150), y, rise: bad ? 30 : 46, life: bad ? 2.8 : 1.9, max: bad ? 2.8 : 1.9, lines, mark });
+    if (this.pops.length > 8) this.pops.shift();
+  }
+  explode(x, y, r, scale = 1, red = false) {
+    const k = REDUCED ? 0.45 : 1;
+    const cols = red ? ['#ffffff', '#ffc2b6', COL.shu, '#ff7a45'] : ['#fff6d8', '#ffd36b', '#ff9d3b', '#ff5a2a'];
+    this.flashes.push({ x, y, r: r * 3.2 * Math.sqrt(scale), life: 0.2, max: 0.2 });
+    this.burst(x, y, Math.round(30 * scale * k), { colors: cols, speed: [90, 380 * Math.sqrt(scale)], life: [0.35, 0.95], size: [1.4, 3.6] });
+    for (let i = 0, n = Math.round(8 * scale * k); i < n; i++) {
+      const a = rand(0, 6.283), sp = rand(40, 190) * Math.sqrt(scale), life = rand(0.8, 1.4);
+      this.parts.push({ k: 'debris', x: x + Math.cos(a) * r * 0.4, y: y + Math.sin(a) * r * 0.4, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life, max: life, size: rand(2.5, 6) * Math.max(0.6, r / 30), rot: rand(0, 6), vr: rand(-6, 6), drag: 1.2, g: 50, col: pick(['#6b605a', '#4f4642', '#8a7d74']) });
+    }
+    for (let i = 0, n = Math.round(5 * Math.sqrt(scale)); i < n; i++) {
+      const life = rand(0.7, 1.2);
+      this.parts.push({ k: 'smoke', x: x + rand(-0.4, 0.4) * r, y: y + rand(-0.4, 0.4) * r, vx: rand(-30, 30), vy: rand(-40, 10), life, max: life, size: r * rand(0.6, 1.0), grow: r * 1.4, drag: 1.5 });
+    }
+    this.rings.push({ x, y, r0: r * 0.8, r1: r * 3.4 * Math.sqrt(scale), life: 0.45, max: 0.45, col: red ? COL.shu : '#ffd68a' });
+    this.shake = Math.max(this.shake, 0.16 * scale);
+    this.sfx(scale >= 2 ? 'bigboom' : 'boom');
+  }
+  burst(x, y, n, o) {
+    for (let i = 0; i < n; i++) {
+      const a = rand(0, Math.PI * 2), sp = rand(o.speed[0], o.speed[1]), life = rand(o.life[0], o.life[1]);
+      this.parts.push({ k: 'spark', x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life, max: life, size: rand(o.size[0], o.size[1]), col: pick(o.colors), drag: 2.4 });
+    }
+  }
+
+  /* ----- update ----- */
+  update(dt) {
+    this.time += dt; this.stateT += dt;
+    this.updateFx(dt);
+    const tgt = this.primary && !this.primary.dead ? this.primary : null;
+    const ta = tgt ? Math.atan2(tgt.y - CANNON.y, tgt.x - CANNON.x) : -Math.PI / 2;
+    this.cannonA += (ta - this.cannonA) * Math.min(1, dt * 12);
+
+    if (this.state === 'banner' && this.stateT >= this.banner.dur) {
+      this.banner = null; this.stateT = 0;
+      if (this.pendingBoss) { this.pendingBoss = false; this.spawnBoss(); this.state = 'boss'; }
+      else { this.state = 'play'; this.spawnT = 0.3; }
+    }
+    if (this.state === 'play' || this.state === 'boss') {
+      this.playTime += dt;
+      this.updateSpawns(dt);
+    }
+    this.updateMeteors(dt);
+    if (this.state === 'play' && !this.cfg.demo && this.waveLeft <= 0 && this.meteors.length === 0) {
+      if (this.waveIdx + 1 < this.waves.length) this.beginWave(this.waveIdx + 1);
+      else this.beginBoss();
+    }
+    if (this.cfg.demo) this.demoAI(dt);
+    if (this.state === 'end' && this.stateT > 2.8 && !this.finished) this.finish();
+  }
+  updateSpawns(dt) {
+    const D = this.D;
+    const small = this.meteors.filter((m) => !m.dead && !m.boss).length;
+    if (this.state === 'play') {
+      this.spawnT -= dt;
+      if (small === 0 && this.spawnT > 0.5) this.spawnT = 0.5;
+      if (this.waveLeft > 0 && small < D.maxActive && this.spawnT <= 0) {
+        const e = this.nextEntry();
+        if (e) { this.makeMeteor(e); this.waveLeft--; this.spawnT = (D.gap * rand(0.85, 1.15)) / this.waveSpeed; }
+        else this.spawnT = 0.3;
+      }
+    } else if (this.state === 'boss' && this.boss && !this.boss.dead) {
+      this.fragT -= dt;
+      if (this.fragT <= 0 && small < 2) {
+        const e = this.nextEntry();
+        if (e) {
+          const f = this.makeMeteor(e, { x0: clamp(this.boss.x + rand(-90, 90), 120, 1160), y0: this.boss.y + 20, s0: 0.42 });
+          f.T *= 1.1;
+        }
+        this.fragT = D.gap * 1.6;
+      }
+    }
+  }
+  updateMeteors(dt) {
+    const f = this.cfg.furigana;
+    for (const m of this.meteors) {
+      if (m.dead) continue;
+      m.age += dt; m.wordAge += dt;
+      if (this.state !== 'end') m.t += dt / m.T;
+      m.rot += m.vr * dt;
+      m.hitFx = Math.max(0, m.hitFx - dt);
+      this.place(m);
+      if (!m.showHint) {
+        const typing = this.cands.includes(m) && m.matcher.typed.length > 0;
+        const timeUp = f === 'delay' && !typing && m.wordAge >= Math.max(2.5, m.wordT * 0.3);
+        if (this.cfg.demo || f === 'always' || m.hinted || m.misses >= 2 || timeUp) {
+          m.showHint = true;
+          if (f !== 'always' && !this.cfg.demo) m.hintShown = true;
+        }
+      }
+      if (!REDUCED && Math.random() < dt * 24) {
+        const back = m.r * 0.8, life = rand(0.25, 0.6);
+        this.parts.push({ k: 'spark', x: m.x - m.dir[0] * back + rand(-0.4, 0.4) * m.r, y: m.y - m.dir[1] * back + rand(-0.4, 0.4) * m.r, vx: -m.dir[0] * rand(20, 60) + rand(-15, 15), vy: -m.dir[1] * rand(20, 60) + rand(-15, 15), life, max: life, size: rand(1, 2.2), col: pick(['#ffb15c', '#ff7a3d', '#ffd98a']), drag: 1.5 });
+      }
+      if (m.t >= 1 && this.state !== 'end') this.impact(m);
+    }
+    if (this.meteors.some((m) => m.dead)) this.meteors = this.meteors.filter((m) => !m.dead);
+    if (this.cands.some((m) => m.dead)) this.cands = this.cands.filter((m) => !m.dead);
+    if (this.primary && this.primary.dead) this.primary = this.cands[0] || null;
+  }
+  updateFx(dt) {
+    for (const p of this.parts) {
+      const d = Math.exp(-(p.drag || 0) * dt);
+      p.vx *= d; p.vy *= d;
+      if (p.g) p.vy += p.g * dt;
+      p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt;
+      if (p.vr) p.rot += p.vr * dt;
+    }
+    this.parts = this.parts.filter((p) => p.life > 0);
+    if (this.parts.length > 900) this.parts.splice(0, this.parts.length - 900);
+    const tick = (arr) => { for (const x of arr) x.life -= dt; return arr.filter((x) => x.life > 0); };
+    this.lasers = tick(this.lasers); this.rings = tick(this.rings); this.flashes = tick(this.flashes);
+    this.pops = tick(this.pops); this.ripples = tick(this.ripples);
+    this.shake = Math.max(0, this.shake - dt * 1.6);
+    this.redFlash = Math.max(0, this.redFlash - dt * 1.8);
+    this.barrierFlash = Math.max(0, this.barrierFlash - dt * 2);
+    this.missFlash = Math.max(0, this.missFlash - dt * 4);
+    this.recoil = Math.max(0, this.recoil - dt * 8);
+    this.comboPop = Math.max(0, this.comboPop - dt * 4);
+    this.shownScore += (this.score - this.shownScore) * Math.min(1, dt * 9);
+  }
+  demoAI(dt) {
+    this.aiT -= dt;
+    if (this.aiT > 0) return;
+    this.aiT = rand(0.07, 0.15);
+    let target = this.primary && !this.primary.dead ? this.primary : null;
+    if (!target) {
+      const live = this.meteors.filter((m) => !m.dead && m.t > 0.2);
+      if (!live.length) return;
+      target = live.reduce((a, b) => (b.t > a.t ? b : a));
+      if (!this.cands.length) { this.aiT = rand(0.3, 0.6); this.primary = target; return; }
+    }
+    const ch = target.matcher.nextChar();
+    if (ch) this.key(ch);
+  }
+
+  /* ----- drawing ----- */
+  draw(ctx) {
+    const sh = this.shake * (REDUCED ? 2 : 14);
+    ctx.save();
+    if (sh > 0.3) ctx.translate(rand(-sh, sh), rand(-sh, sh));
+    drawPlanet(ctx);
+    this.drawBarrier(ctx);
+    const live = this.meteors.filter((m) => !m.dead).sort((a, b) => a.t - b.t);
+    for (const m of live) this.drawTrail(ctx, m);
+    this.drawParts(ctx, false);
+    for (const m of live) this.drawRock(ctx, m);
+    this.drawLasers(ctx);
+    this.drawCannon(ctx);
+    this.drawParts(ctx, true);
+    this.drawRings(ctx);
+    for (const m of live) if (this.cands.includes(m)) this.drawReticle(ctx, m, m === this.primary);
+    const rank = (m) => (m === this.primary ? 2 : this.cands.includes(m) ? 1 : 0);
+    live.slice().sort((a, b) => rank(a) - rank(b) || a.t - b.t).forEach((m) => this.drawCard(ctx, m));
+    this.drawPops(ctx);
+    ctx.restore();
+    if (this.redFlash > 0) {
+      const g = ctx.createRadialGradient(W / 2, H / 2, H * 0.3, W / 2, H / 2, W * 0.75);
+      g.addColorStop(0, rgba(COL.shu, 0.08 * this.redFlash)); g.addColorStop(1, rgba(COL.shu, 0.4 * this.redFlash));
+      ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    }
+    if (!this.cfg.demo) this.drawHUD(ctx);
+    this.drawBanner(ctx);
+  }
+  drawBarrier(ctx) {
+    const hpK = this.hp / this.maxHp;
+    let flick = 1;
+    if (this.cfg.demo) flick = 0.8;
+    else if (this.hp <= 0) flick = 0.08;
+    else if (this.hp <= 2) flick = 0.55 + 0.45 * Math.pow(Math.sin(this.time * 18), 2);
+    const a0 = barrierAng(-80), a1 = barrierAng(W + 80);
+    const arc = (lw, col, from = a0, to = a1) => { ctx.lineWidth = lw; ctx.strokeStyle = col; ctx.beginPath(); ctx.arc(BAR.cx, BAR.cy, BAR.r, from, to); ctx.stroke(); };
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    arc(20, rgba(COL.beam, 0.045 * flick));
+    arc(6, rgba(COL.beam, (0.06 + 0.1 * hpK) * flick));
+    arc(1.6, rgba(COL.beam, (0.3 + 0.4 * hpK) * flick));
+    const sx = ((this.time * 150) % (W + 600)) - 300;
+    arc(3, rgba(COL.beam, 0.35 * flick), barrierAng(sx - 70), barrierAng(sx + 70));
+    if (this.barrierFlash > 0) arc(5, rgba(COL.shu, this.barrierFlash));
+    for (const rp of this.ripples) {
+      const k = 1 - rp.life / rp.max, span = 30 + k * 300;
+      arc(4 * (1 - k) + 1, rgba(COL.shu, 0.9 * (1 - k)), barrierAng(rp.x - span), barrierAng(rp.x + span));
+    }
+    ctx.restore();
+  }
+  drawTrail(ctx, m) {
+    const r = m.r, d = m.dir;
+    const L = r * (2.4 + 2.2 * m.ee) * (m.boss ? 1.3 : 1);
+    const tx = m.x - d[0] * L, ty = m.y - d[1] * L, nx = -d[1], ny = d[0];
+    const g = ctx.createLinearGradient(m.x, m.y, tx, ty);
+    g.addColorStop(0, `rgba(255,190,110,${0.4 + 0.2 * m.ee})`);
+    g.addColorStop(0.4, 'rgba(255,110,60,0.17)');
+    g.addColorStop(1, 'rgba(255,80,60,0)');
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(m.x + nx * r * 0.9, m.y + ny * r * 0.9);
+    ctx.quadraticCurveTo(tx + nx * r * 0.2, ty + ny * r * 0.2, tx, ty);
+    ctx.quadraticCurveTo(tx - nx * r * 0.2, ty - ny * r * 0.2, m.x - nx * r * 0.9, m.y - ny * r * 0.9);
+    ctx.closePath(); ctx.fill();
+    ctx.restore();
+  }
+  drawRock(ctx, m) {
+    const r = m.r;
+    if (r < 0.5) return;
+    const j = m.hitFx > 0 ? m.hitFx * 30 : 0;
+    const d = m.dir;
+    const danger = m.t > 0.78 ? 0.5 + 0.5 * Math.sin(this.time * 14) : 0;
+    ctx.save();
+    ctx.translate(m.x + rand(-j, j), m.y + rand(-j, j));
+    const gx = d[0] * r * 0.35, gy = d[1] * r * 0.35;
+    const hg = ctx.createRadialGradient(gx, gy, r * 0.3, gx, gy, r * 1.9);
+    hg.addColorStop(0, `rgba(255,${Math.round(150 - danger * 90)},70,${0.3 + 0.25 * m.ee})`);
+    hg.addColorStop(1, 'rgba(255,120,60,0)');
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.fillStyle = hg; ctx.beginPath(); ctx.arc(gx, gy, r * 1.9, 0, Math.PI * 2); ctx.fill();
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.rotate(m.rot);
+    ctx.beginPath();
+    m.shape.pts.forEach(([c, s, k], i) => { const px = c * r * k, py = s * r * k; if (i) ctx.lineTo(px, py); else ctx.moveTo(px, py); });
+    ctx.closePath();
+    const bg = ctx.createRadialGradient(-r * 0.35, -r * 0.4, r * 0.1, 0, 0, r * 1.05);
+    bg.addColorStop(0, m.boss ? '#a09084' : '#8d8278'); bg.addColorStop(0.55, '#564c46'); bg.addColorStop(1, '#241f1d');
+    ctx.fillStyle = bg; ctx.fill();
+    ctx.lineWidth = 1.2; ctx.strokeStyle = 'rgba(0,0,0,0.45)'; ctx.stroke();
+    ctx.save();
+    ctx.clip();
+    for (const [cx, cy, cr] of m.shape.craters) {
+      ctx.fillStyle = 'rgba(20,16,14,0.42)';
+      ctx.beginPath(); ctx.arc(cx * r, cy * r, cr * r, 0, 6.283); ctx.fill();
+      ctx.strokeStyle = 'rgba(255,230,200,0.13)'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.arc(cx * r + 0.6, cy * r + 0.6, cr * r, 2.2, 5.2); ctx.stroke();
+    }
+    ctx.rotate(-m.rot);
+    const eg = ctx.createLinearGradient(-d[0] * r, -d[1] * r, d[0] * r, d[1] * r);
+    eg.addColorStop(0.45, 'rgba(255,140,60,0)');
+    eg.addColorStop(1, `rgba(255,170,80,${0.5 + 0.35 * danger})`);
+    ctx.fillStyle = eg; ctx.fillRect(-r * 1.2, -r * 1.2, r * 2.4, r * 2.4);
+    ctx.restore();
+    if (m.cracks) {
+      ctx.strokeStyle = 'rgba(255,205,130,0.95)'; ctx.lineWidth = 2.2; ctx.lineCap = 'round';
+      for (const ck of m.cracks) {
+        ctx.beginPath();
+        ck.forEach(([x, y], i) => (i ? ctx.lineTo(x * r, y * r) : ctx.moveTo(x * r, y * r)));
+        ctx.stroke();
+      }
+    }
+    ctx.restore();
+  }
+  drawReticle(ctx, m, prim) {
+    const r = m.r + 12, a = this.time * 2.2;
+    ctx.save();
+    ctx.translate(m.x, m.y);
+    ctx.strokeStyle = COL.beam; ctx.lineWidth = prim ? 2 : 1.2; ctx.globalAlpha = prim ? 0.95 : 0.5;
+    for (let i = 0; i < 4; i++) { const b = a + (i * Math.PI) / 2; ctx.beginPath(); ctx.arc(0, 0, r, b - 0.32, b + 0.32); ctx.stroke(); }
+    if (prim) {
+      for (let i = 0; i < 4; i++) {
+        const b = -a * 0.7 + (i * Math.PI) / 2 + Math.PI / 4, c = Math.cos(b), s = Math.sin(b);
+        ctx.beginPath(); ctx.moveTo(c * (r + 4), s * (r + 4)); ctx.lineTo(c * (r + 11), s * (r + 11)); ctx.stroke();
+      }
+    }
+    ctx.restore();
+  }
+  drawLasers(ctx) {
+    if (!this.lasers.length) return;
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter'; ctx.lineCap = 'round';
+    for (const L of this.lasers) {
+      const a = L.life / L.max;
+      ctx.strokeStyle = rgba(COL.beam, 0.3 * a); ctx.lineWidth = 10 * a + 2;
+      ctx.beginPath(); ctx.moveTo(L.x0, L.y0); ctx.lineTo(L.x1, L.y1); ctx.stroke();
+      ctx.strokeStyle = `rgba(255,255,255,${0.9 * a})`; ctx.lineWidth = 2.2;
+      ctx.beginPath(); ctx.moveTo(L.x0, L.y0); ctx.lineTo(L.x1, L.y1); ctx.stroke();
+    }
+    ctx.restore();
+  }
+  drawCannon(ctx) {
+    const { x, y } = CANNON;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.save();
+    ctx.rotate(this.cannonA);
+    const rec = this.recoil * 7;
+    ctx.fillStyle = '#2b355f'; rr(ctx, 6 - rec, -7, 50, 14, 4); ctx.fill();
+    ctx.fillStyle = '#4a5a92'; rr(ctx, 6 - rec, -7, 50, 5, 3); ctx.fill();
+    ctx.fillStyle = rgba(COL.beam, 0.45 + this.recoil * 0.55); ctx.fillRect(52 - rec, -5, 6, 10);
+    ctx.restore();
+    const gr = ctx.createRadialGradient(-8, -10, 2, 0, 0, 30);
+    gr.addColorStop(0, '#5b6aa3'); gr.addColorStop(1, '#1a2245');
+    ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(0, 6, 28, Math.PI, 0); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = rgba(COL.beam, 0.6); ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(0, 6, 28, Math.PI, 0); ctx.stroke();
+    const core = this.missFlash > 0 ? rgba(COL.shu, 0.6 + 0.4 * this.missFlash) : rgba(COL.beam, 0.55 + 0.4 * Math.pow(Math.sin(this.time * 3), 2));
+    ctx.fillStyle = core; ctx.beginPath(); ctx.arc(0, -4, 4.5, 0, Math.PI * 2); ctx.fill();
+    if (this.missFlash > 0) {
+      ctx.font = `700 14px ${FONT.hud}`; ctx.textAlign = 'center'; ctx.fillStyle = rgba(COL.shu, this.missFlash);
+      ctx.fillText('MISS', 0, -48 - (1 - this.missFlash) * 10);
+    }
+    ctx.restore();
+  }
+  drawParts(ctx, front) {
+    ctx.save();
+    if (front) ctx.globalCompositeOperation = 'lighter';
+    for (const p of this.parts) {
+      const a = clamp(p.life / p.max, 0, 1);
+      if (front) {
+        if (p.k !== 'spark') continue;
+        ctx.globalAlpha = a; ctx.fillStyle = p.col;
+        ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
+      } else if (p.k === 'smoke') {
+        const s = p.size + (1 - a) * p.grow;
+        ctx.globalAlpha = 0.28 * a; ctx.fillStyle = '#3c3a4c';
+        ctx.beginPath(); ctx.arc(p.x, p.y, s, 0, 6.283); ctx.fill();
+      } else if (p.k === 'debris') {
+        ctx.globalAlpha = a; ctx.fillStyle = p.col;
+        ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot);
+        ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.7);
+        ctx.restore();
+      }
+    }
+    ctx.restore();
+  }
+  drawRings(ctx) {
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    for (const f of this.flashes) {
+      const a = f.life / f.max;
+      const g = ctx.createRadialGradient(f.x, f.y, 0, f.x, f.y, f.r);
+      g.addColorStop(0, `rgba(255,248,225,${0.85 * a})`); g.addColorStop(1, 'rgba(255,200,120,0)');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(f.x, f.y, f.r, 0, 6.283); ctx.fill();
+    }
+    for (const R of this.rings) {
+      const k = 1 - R.life / R.max;
+      ctx.strokeStyle = rgba(R.col, 0.8 * (1 - k)); ctx.lineWidth = 3 * (1 - k) + 0.5;
+      ctx.beginPath(); ctx.arc(R.x, R.y, lerp(R.r0, R.r1, 1 - Math.pow(1 - k, 2)), 0, 6.283); ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  /* the word card each meteor carries: a ring-bound study card */
+  drawCard(ctx, m) {
+    const cfg = this.cfg, e = m.entry, mt = m.matcher;
+    const ls = (m.boss ? 1.16 : 1) * lerp(0.84, 1.04, m.ee) * m.pop;
+    if (ls < 0.08) return;
+    const R = (px) => px * ls;
+    const isCand = this.cands.includes(m), isPrim = this.primary === m;
+    const kanaOnly = !hasKanji(e.w);
+    const hint = m.showHint, p = mt.pos;
+    const fBody = (wt, px) => `${wt} ${R(px)}px ${FONT.body}`;
+    const fCard = (px) => `600 ${R(px)}px ${FONT.card}`;
+    const fHud = (px) => `600 ${R(px)}px ${FONT.hud}`;
+    const prog = (text, font, base) => [{ t: text.slice(0, p), f: font, c: COL.shu }, { t: text.slice(p), f: font, c: base }];
+    const lines = [];
+    if (m.boss) lines.push({ h: 16, segs: [{ t: `巨大隕石  ${m.bossIdx + 1} / ${m.bossWords.length}`, f: fBody(700, 11), c: COL.shu }] });
+    if (cfg.qmode === 'mean') {
+      lines.push({ h: 27, segs: [{ t: e.m, f: fBody(700, 18), c: COL.ink }] });
+      if (hint) {
+        if (!kanaOnly) lines.push({ h: 18, segs: prog(e.r, fBody(700, 14), COL.pencil) });
+        lines.push({ h: 30, segs: kanaOnly ? prog(e.w, fCard(22), COL.ink) : [{ t: e.w, f: fCard(23), c: COL.ink }] });
+      }
+    } else {
+      if (!kanaOnly && hint) lines.push({ h: 19, segs: prog(e.r, fBody(700, 15), COL.pencil) });
+      lines.push({ h: 40, segs: kanaOnly ? prog(e.w, fCard(30), COL.ink) : [{ t: e.w, f: fCard(31), c: COL.ink }] });
+      if (cfg.meaning) lines.push({ h: 18, segs: [{ t: e.m, f: fBody(400, 13), c: COL.pencil }] });
+    }
+    const readingShown = hint || (cfg.qmode === 'read' && kanaOnly);
+    if (cfg.input === 'romaji') {
+      if (readingShown && cfg.guide) {
+        const rest = mt.guide();
+        lines.push({ h: 21, segs: [{ t: mt.typed, f: fHud(15), c: COL.shu }, { t: rest.slice(0, 1), f: fHud(15), c: COL.ink, u: true }, { t: rest.slice(1), f: fHud(15), c: '#8b91a8' }] });
+      } else if (mt.typed) {
+        const caret = (this.time * 2) % 1 < 0.6 ? '_' : ' ';
+        lines.push({ h: 21, segs: [{ t: mt.typed, f: fHud(15), c: COL.shu }, { t: caret, f: fHud(15), c: COL.pencil }] });
+      }
+    } else if (!readingShown && mt.typed) {
+      lines.push({ h: 20, segs: [{ t: mt.typedKana(), f: fBody(700, 15), c: COL.shu }] });
+    }
+    let wMax = 0;
+    for (const L of lines) {
+      let w = 0;
+      for (const s of L.segs) { ctx.font = s.f; s.w = s.t ? ctx.measureText(s.t).width : 0; w += s.w; }
+      L.w = w; wMax = Math.max(wMax, w);
+    }
+    const padX = R(14), padY = R(7), hole = R(17);
+    const cw = Math.max(R(86), wMax + padX * 2 + hole);
+    const ch = lines.reduce((a, L) => a + R(L.h), 0) + padY * 2;
+    const cx = clamp(m.x, cw / 2 + 6, W - cw / 2 - 6);
+    const top = m.y + m.r * 0.92 + R(6);
+    ctx.save();
+    ctx.globalAlpha = Math.min(1, m.pop * 1.2);
+    ctx.translate(cx, top);
+    ctx.rotate(isCand ? 0 : m.tilt);
+    const x0 = -cw / 2;
+    ctx.fillStyle = 'rgba(0,0,0,0.35)'; rr(ctx, x0 + 3, 5, cw, ch, R(7)); ctx.fill();
+    if (isCand) { ctx.shadowColor = COL.beam; ctx.shadowBlur = 16; }
+    ctx.fillStyle = COL.paper; rr(ctx, x0, 0, cw, ch, R(7)); ctx.fill();
+    ctx.shadowBlur = 0; ctx.shadowColor = 'transparent';
+    const danger = m.t > 0.8 && !m.boss ? 0.5 + 0.5 * Math.sin(this.time * 12) : 0;
+    if (isCand) { ctx.lineWidth = isPrim ? 2.6 : 1.5; ctx.strokeStyle = COL.beam; ctx.stroke(); }
+    else if (danger) { ctx.lineWidth = 2; ctx.strokeStyle = rgba(COL.shu, 0.4 + 0.6 * danger); ctx.stroke(); }
+    ctx.strokeStyle = rgba(COL.shu, 0.3); ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(x0 + hole + R(2), R(4)); ctx.lineTo(x0 + hole + R(2), ch - R(4)); ctx.stroke();
+    const hx = x0 + hole * 0.55, hy = ch / 2;
+    ctx.fillStyle = COL.space; ctx.beginPath(); ctx.arc(hx, hy, R(3.4), 0, 6.283); ctx.fill();
+    ctx.strokeStyle = '#c3c9dc'; ctx.lineWidth = R(2);
+    ctx.beginPath(); ctx.arc(hx - R(5), hy, R(7.5), -1.1, 1.1, true); ctx.stroke();
+    ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
+    let y = padY;
+    for (const L of lines) {
+      const lh = R(L.h);
+      let x = hole / 2 - L.w / 2;
+      for (const s of L.segs) {
+        if (!s.t) continue;
+        ctx.font = s.f; ctx.fillStyle = s.c;
+        ctx.fillText(s.t, x, y + lh / 2);
+        if (s.u) ctx.fillRect(x, y + lh / 2 + R(8), s.w, R(1.6));
+        x += s.w;
+      }
+      y += lh;
+    }
+    ctx.restore();
+  }
+  drawPops(ctx) {
+    ctx.save();
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    for (const P of this.pops) {
+      const k = 1 - P.life / P.max;
+      const a = Math.min(1, P.life / 0.4) * Math.min(1, k * 14 + 0.15);
+      const y0 = P.y - k * P.rise;
+      ctx.globalAlpha = a;
+      if (P.mark) this.drawMark(ctx, P.mark, P.x, y0, clamp(k * 3.2, 0, 1));
+      let y = y0;
+      for (const L of P.lines) {
+        ctx.font = L.f; ctx.fillStyle = L.c;
+        ctx.fillText(L.t, P.x, y);
+        y += parseFloat(L.f.split(' ')[1]) * 1.25;
+      }
+    }
+    ctx.restore();
+  }
+  /* teacher's red-pen marks: ○ right, △ right with a hint, × missed */
+  drawMark(ctx, kind, x, y, prog) {
+    ctx.save();
+    ctx.strokeStyle = COL.shu; ctx.lineWidth = 4; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    ctx.globalAlpha *= 0.9;
+    if (kind === '○') {
+      const s = -Math.PI / 2 - 0.4;
+      ctx.beginPath(); ctx.ellipse(x, y, 30, 26, -0.18, s, s + (Math.PI * 2 + 0.5) * prog); ctx.stroke();
+    } else if (kind === '△') {
+      const pts = [[x, y - 30], [x + 30, y + 22], [x - 30, y + 22], [x, y - 30]];
+      const segs = 3 * prog;
+      ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]);
+      for (let i = 0; i < 3; i++) {
+        const f = clamp(segs - i, 0, 1);
+        if (f <= 0) break;
+        ctx.lineTo(lerp(pts[i][0], pts[i + 1][0], f), lerp(pts[i][1], pts[i + 1][1], f));
+      }
+      ctx.stroke();
+    } else {
+      const f1 = clamp(prog * 2, 0, 1), f2 = clamp(prog * 2 - 1, 0, 1);
+      ctx.beginPath(); ctx.moveTo(x - 24, y - 24); ctx.lineTo(x - 24 + 48 * f1, y - 24 + 48 * f1); ctx.stroke();
+      if (f2 > 0) { ctx.beginPath(); ctx.moveTo(x + 24, y - 24); ctx.lineTo(x + 24 - 48 * f2, y - 24 + 48 * f2); ctx.stroke(); }
+    }
+    ctx.restore();
+  }
+  drawHUD(ctx) {
+    const g = ctx.createLinearGradient(0, 0, 0, 92);
+    g.addColorStop(0, rgba(COL.space, 0.9)); g.addColorStop(1, rgba(COL.space, 0));
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, 92);
+    const label = (t, x, y, col) => {
+      ctx.font = `600 11px ${FONT.hud}`; ctx.fillStyle = col || COL.haze;
+      if ('letterSpacing' in ctx) ctx.letterSpacing = '2px';
+      ctx.fillText(t, x, y);
+      if ('letterSpacing' in ctx) ctx.letterSpacing = '0px';
+    };
+    ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'left';
+    label('SCORE', 28, 26);
+    ctx.font = `700 30px ${FONT.hud}`; ctx.fillStyle = COL.gold;
+    ctx.fillText(String(Math.round(this.shownScore)).padStart(7, '0'), 26, 57);
+    const total = this.keysOk + this.keysMiss;
+    const acc = total ? Math.round((this.keysOk / total) * 100) : 100;
+    const kpm = this.playTime > 2 ? Math.round((this.keysOk / this.playTime) * 60) : 0;
+    ctx.font = `500 12px ${FONT.hud}`; ctx.fillStyle = COL.haze;
+    ctx.fillText(`ACC ${acc}%    KPM ${kpm}`, 28, 78);
+    if (this.combo >= 2) {
+      const s = 1 + this.comboPop * 0.25;
+      ctx.save(); ctx.translate(200, 56); ctx.scale(s, s);
+      ctx.font = `700 24px ${FONT.hud}`; ctx.fillStyle = COL.star;
+      const t = String(this.combo); ctx.fillText(t, 0, 0);
+      const w = ctx.measureText(t).width;
+      ctx.restore();
+      label('COMBO', 200 + w * s + 6, 56, COL.gold);
+    }
+    ctx.textAlign = 'center';
+    const bx = 520, bw = 240;
+    if (this.boss || this.state === 'boss' || this.pendingBoss) {
+      label('GIANT METEOR', W / 2, 26, COL.shu);
+      const n = this.cfg.bossWords.length, done = this.boss ? this.boss.bossIdx : this.pendingBoss ? 0 : n;
+      for (let i = 0; i < n; i++) {
+        const sx = bx + (bw / n) * i;
+        ctx.fillStyle = i < done ? rgba(COL.shu, 0.25) : COL.shu;
+        ctx.fillRect(sx + 2, 35, bw / n - 4, 6);
+      }
+    } else if (this.waves) {
+      label(`WAVE ${this.waveIdx + 1} / ${this.waves.length}`, W / 2, 26);
+      const live = this.meteors.filter((m) => !m.dead).length;
+      const k = this.waveTotal ? clamp((this.waveTotal - this.waveLeft - live) / this.waveTotal, 0, 1) : 0;
+      ctx.fillStyle = 'rgba(232,236,255,0.12)'; ctx.fillRect(bx, 35, bw, 5);
+      ctx.fillStyle = COL.beam; ctx.fillRect(bx, 35, bw * k, 5);
+    }
+    ctx.textAlign = 'right';
+    label('SHIELD', W - 28, 26);
+    const lostFlash = Math.max(0, 1 - (this.time - this.lostAt) * 1.5);
+    for (let i = 0; i < this.maxHp; i++) {
+      const x = W - 28 - (this.maxHp - i) * 30 + 6, y = 35;
+      ctx.beginPath(); ctx.moveTo(x + 5, y); ctx.lineTo(x + 26, y); ctx.lineTo(x + 21, y + 12); ctx.lineTo(x, y + 12); ctx.closePath();
+      if (i < this.hp) { ctx.fillStyle = this.hp <= 2 ? COL.gold : COL.beam; ctx.fill(); }
+      else if (i < this.hp + 3 && lostFlash > 0) { ctx.fillStyle = rgba(COL.shu, lostFlash); ctx.fill(); }
+      ctx.strokeStyle = rgba(COL.beam, 0.45); ctx.lineWidth = 1; ctx.stroke();
+    }
+    ctx.textAlign = 'left';
+    ctx.font = `400 12px ${FONT.body}`; ctx.fillStyle = 'rgba(232,236,255,0.5)';
+    ctx.fillText(this.cfg.subtitle || '', 24, H - 40);
+    ctx.fillText('Space ヒント  ·  Backspace 解除  ·  Esc ポーズ', 24, H - 20);
+  }
+  drawBanner(ctx) {
+    const b = this.banner;
+    if (!b) return;
+    const t = this.stateT;
+    const a = Math.min(clamp(t / 0.35, 0, 1), b.dur < 50 ? clamp((b.dur - t) / 0.4, 0, 1) : 1);
+    ctx.save();
+    ctx.globalAlpha = a;
+    if (b.warn) {
+      const flash = 0.55 + 0.45 * Math.pow(Math.sin(t * 6), 2);
+      ctx.fillStyle = rgba(COL.shu, 0.16 * flash); ctx.fillRect(0, H / 2 - 74, W, 132);
+      ctx.save();
+      ctx.beginPath(); ctx.rect(0, H / 2 - 74, W, 10); ctx.rect(0, H / 2 + 48, W, 10); ctx.clip();
+      ctx.fillStyle = rgba(COL.shu, 0.75 * flash);
+      for (let x = -40 + ((t * 80) % 40); x < W + 40; x += 40) {
+        ctx.beginPath(); ctx.moveTo(x, H / 2 - 80); ctx.lineTo(x + 20, H / 2 - 80); ctx.lineTo(x + 60, H / 2 + 70); ctx.lineTo(x + 40, H / 2 + 70); ctx.closePath(); ctx.fill();
+      }
+      ctx.restore();
+    }
+    ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+    const s = 1 + (1 - clamp(t / 0.35, 0, 1)) * 0.15;
+    ctx.translate(W / 2, H / 2);
+    ctx.scale(s, s);
+    ctx.font = `${b.title.length > 10 ? 62 : 80}px ${FONT.display}`;
+    ctx.shadowColor = b.warn ? rgba(COL.shu, 0.8) : rgba(COL.beam, 0.6); ctx.shadowBlur = 24;
+    ctx.fillStyle = b.warn ? '#ffd9d0' : COL.star;
+    ctx.fillText(b.title, 0, 6);
+    ctx.shadowBlur = 0;
+    ctx.font = `700 19px ${FONT.body}`; ctx.fillStyle = b.warn ? '#ffc2b6' : COL.gold;
+    ctx.fillText(b.sub || '', 0, 42);
+    ctx.restore();
+  }
+}
+</script>
+<script>
+'use strict';
+/* ============================================================
+   UI — screens, options, practice mode, word list, results, boot
+   ============================================================ */
+
+const DEFAULTS = { input: 'romaji', qmode: 'read', furigana: 'delay', meaning: true, guide: true, diff: 'normal', kbd: true, sfx: true, bgm: true, voice: true };
+let settings = Object.assign({}, DEFAULTS, Store.get('settings', {}));
+const saveSettings = () => Store.set('settings', settings);
+
+const Best = {
+  data: Store.get('best', {}),
+  key: (lv, s) => `${lv}|${s.qmode}|${s.diff}`,
+  get(lv) { return this.data[this.key(lv, settings)] || 0; },
+  put(lv, cfg, score) {
+    const k = this.key(lv, cfg);
+    if (score <= (this.data[k] || 0)) return false;
+    this.data[k] = score; Store.set('best', this.data);
+    return true;
+  },
+};
+
+const $ = (s, el = document) => el.querySelector(s);
+const $$ = (s, el = document) => Array.from(el.querySelectorAll(s));
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const SPK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z" fill="currentColor"/><path d="M16 8.5a5 5 0 0 1 0 7M18.6 6a8.6 8.6 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
+
+const ALL_WORDS = [].concat(...LEVEL_INFO.map((L) => VOCAB[L.id]), VOCAB.yoji);
+const ENTRY = new Map(ALL_WORDS.map((e) => [e.id, e]));
+const romajiCache = new Map();
+const romajiOf = (e) => { if (!romajiCache.has(e.id)) romajiCache.set(e.id, new RomajiMatcher(e.r).guide()); return romajiCache.get(e.id); };
+const weakWords = () => ALL_WORDS.filter((e) => Stats.isWeak(e.id)).sort((a, b) => Stats.weakScore(b.id) - Stats.weakScore(a.id));
+const levelOf = (id) => LEVEL_INFO.find((L) => L.id === id);
+
+function toast(msg) {
+  const t = $('#toast');
+  t.textContent = msg; t.hidden = false;
+  clearTimeout(toast.tm);
+  toast.tm = setTimeout(() => { t.hidden = true; }, 2800);
+}
+function say(e) {
+  if (Speech.say(e.r, 0.95, true)) return;
+  toast('この端末には日本語の音声がありません。 No Japanese voice is installed on this device.');
+}
+function preloadFonts(entries) {
+  if (!document.fonts || !document.fonts.load) return;
+  const text = entries.map((e) => e.w + e.r + e.m).join('');
+  ['600 30px "Klee One"', '700 16px "BIZ UDPGothic"', '400 13px "BIZ UDPGothic"'].forEach((f) => document.fonts.load(f, text).catch(() => {}));
+}
+
+/* ---------------- options (segmented controls) ---------------- */
+const OPTS = {
+  input: { jp: '入力方式', en: 'Input', items: [['romaji', 'ローマ字', 'Romaji'], ['kana', 'かな', 'JIS kana']] },
+  qmode: { jp: '出題', en: 'Question', items: [['read', '漢字→よみ', 'Read the word'], ['mean', '英語→ことば', 'Recall from English']] },
+  furigana: { jp: 'ふりがな', en: 'Furigana hint', items: [['always', 'いつも', 'Always'], ['delay', 'あとから', 'Delayed'], ['off', 'なし', 'Off']] },
+  diff: { jp: 'スピード', en: 'Meteor speed', items: [['easy', 'ゆっくり', 'Easy'], ['normal', 'ふつう', 'Normal'], ['hard', 'はやい', 'Hard']] },
+  meaning: { jp: '意味を表示', en: 'English meaning on cards', items: [[true, '表示', 'On'], [false, 'かくす', 'Off']] },
+  guide: { jp: 'ローマ字ガイド', en: 'Romaji guide', items: [[true, '表示', 'On'], [false, 'かくす', 'Off']] },
+  kbd: { jp: 'キーボード表示', en: 'Keyboard in practice', items: [[true, '表示', 'On'], [false, 'かくす', 'Off']] },
+  voice: { jp: '読み上げ', en: 'Read words aloud', items: [[true, 'ON', 'On'], [false, 'OFF', 'Off']] },
+  sfx: { jp: '効果音', en: 'Sound effects', items: [[true, 'ON', 'On'], [false, 'OFF', 'Off']] },
+  bgm: { jp: '音楽', en: 'Music', items: [[true, 'ON', 'On'], [false, 'OFF', 'Off']] },
+};
+function optHTML(key, scope) {
+  const o = OPTS[key];
+  return `<div class="opt"><span class="opt-label">${o.jp}<small>${o.en}</small></span>` +
+    `<div class="seg" role="radiogroup" aria-label="${o.jp} ${o.en}" data-key="${key}">` +
+    o.items.map(([v, jp, en], i) => `<button type="button" role="radio" id="${scope}-${key}-${i}" data-v='${JSON.stringify(v)}'>${jp}<small>${en}</small></button>`).join('') +
+    '</div></div>';
+}
+function syncSegs() {
+  for (const seg of $$('.seg[data-key]')) {
+    const v = JSON.stringify(settings[seg.dataset.key]);
+    for (const b of seg.children) b.setAttribute('aria-checked', String(b.dataset.v === v));
+  }
+}
+
+/* ---------------- on-screen keyboard ---------------- */
+const KB_ROWS = {
+  romaji: [
+    ['Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6', 'Digit7', 'Digit8', 'Digit9', 'Digit0', 'Minus'],
+    ['KeyQ', 'KeyW', 'KeyE', 'KeyR', 'KeyT', 'KeyY', 'KeyU', 'KeyI', 'KeyO', 'KeyP'],
+    ['KeyA', 'KeyS', 'KeyD', 'KeyF', 'KeyG', 'KeyH', 'KeyJ', 'KeyK', 'KeyL', 'Semicolon'],
+    ['KeyZ', 'KeyX', 'KeyC', 'KeyV', 'KeyB', 'KeyN', 'KeyM', 'Comma', 'Period', 'Slash'],
+  ],
+  kana: [
+    ['Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6', 'Digit7', 'Digit8', 'Digit9', 'Digit0', 'Minus', 'Equal', 'IntlYen'],
+    ['KeyQ', 'KeyW', 'KeyE', 'KeyR', 'KeyT', 'KeyY', 'KeyU', 'KeyI', 'KeyO', 'KeyP', 'BracketLeft', 'BracketRight'],
+    ['KeyA', 'KeyS', 'KeyD', 'KeyF', 'KeyG', 'KeyH', 'KeyJ', 'KeyK', 'KeyL', 'Semicolon', 'Quote', 'Backslash'],
+    ['ShiftLeft', 'KeyZ', 'KeyX', 'KeyC', 'KeyV', 'KeyB', 'KeyN', 'KeyM', 'Comma', 'Period', 'Slash', 'IntlRo'],
+  ],
+};
+const KEY_LABEL = { Minus: '-', Equal: '^', IntlYen: '¥', BracketLeft: '@', BracketRight: '[', Semicolon: ';', Quote: ':', Backslash: ']', Comma: ',', Period: '.', Slash: '/', IntlRo: '\\' };
+const keyLabel = (c) => (c.startsWith('Key') ? c.slice(3) : c.startsWith('Digit') ? c.slice(5) : KEY_LABEL[c] || c);
+const KB = {
+  keys: {}, cur: [],
+  build(el, layout) {
+    const kana = layout === 'kana';
+    const indents = kana ? [0, 0.5, 0.75, 0] : [0, 0.5, 0.75, 1.25];
+    el.innerHTML = KB_ROWS[kana ? 'kana' : 'romaji'].map((row, ri) => `<div class="kb-row" style="--indent:${indents[ri]}">` + row.map((code) => {
+      if (code === 'ShiftLeft') return '<div class="kb-key wide" data-code="ShiftLeft">Shift</div>';
+      const home = code === 'KeyF' || code === 'KeyJ' ? ' home' : '';
+      if (kana) {
+        const k = JIS_KANA[code] || [];
+        return `<div class="kb-key${home}" data-code="${code}">${k[1] ? `<s>${k[1]}</s>` : ''}<b>${k[0] || ''}</b><i>${esc(keyLabel(code))}</i></div>`;
+      }
+      return `<div class="kb-key${home}" data-code="${code}"><b>${esc(keyLabel(code))}</b></div>`;
+    }).join('') + '</div>').join('');
+    this.keys = {}; this.cur = [];
+    for (const k of $$('.kb-key', el)) this.keys[k.dataset.code] = k;
+  },
+  highlight(code, shift) {
+    for (const k of this.cur) k.classList.remove('next');
+    this.cur = [];
+    for (const c of [code, shift ? 'ShiftLeft' : null]) {
+      const k = c && this.keys[c];
+      if (k) { k.classList.add('next'); this.cur.push(k); }
+    }
+  },
+};
+
+/* ---------------- practice mode ---------------- */
+const Practice = {
+  m: null,
+  start(o) {
+    this.o = o; this.words = o.words; this.i = 0;
+    this.cfg = { input: settings.input, qmode: settings.qmode, furigana: settings.furigana, meaning: settings.meaning, guide: settings.guide };
+    this.keysOk = 0; this.keysMiss = 0; this.t0 = 0; this.tEnd = 0; this.noHint = 0; this.done = 0; this.lastSecs = -1;
+    this.log = new Map();
+    $('#p-level').textContent = `${o.label} · ${this.cfg.qmode === 'read' ? '漢字→よみ' : '英語→ことば'} · ${this.cfg.input === 'kana' ? 'かな入力' : 'ローマ字'}`;
+    KB.build($('#p-kbd'), this.cfg.input);
+    $('#p-kbd').hidden = !settings.kbd;
+    $('#p-time').textContent = '0:00';
+    UI.show('practice');
+    this.load();
+  },
+  load() {
+    const e = this.words[this.i];
+    this.e = e; this.m = makeMatcher(e.r, this.cfg.input);
+    this.showHint = this.cfg.furigana === 'always'; this.hintUsed = false; this.misses = 0; this.locked = false;
+    this.wStart = performance.now();
+    $('#p-mark').innerHTML = '';
+    $('#p-card').classList.remove('good');
+    this.render();
+  },
+  key(tok) {
+    if (this.locked || !this.m) return;
+    if (!this.t0) this.t0 = performance.now();
+    if (this.m.input(tok)) {
+      this.keysOk++;
+      Sound.play('type');
+      if (this.m.done) this.complete(); else this.render();
+    } else {
+      this.keysMiss++; this.misses++;
+      if (this.misses <= 3) this.rec('m');
+      Sound.play('miss');
+      const c = $('#p-card');
+      c.classList.remove('shake'); void c.offsetWidth; c.classList.add('shake');
+      if (this.misses >= 2) this.reveal(); else this.render();
+    }
+  },
+  reveal() {
+    if (this.showHint) return;
+    this.showHint = true;
+    if (this.cfg.furigana !== 'always') this.hintUsed = true;
+    this.render();
+  },
+  hint() { if (!this.showHint && !this.locked) { Sound.play('hint'); this.reveal(); } },
+  complete() {
+    this.locked = true; this.done++;
+    const used = this.hintUsed;
+    if (!used) this.noHint++;
+    this.rec(used ? 'g' : 'c');
+    Sound.play('ok');
+    Speech.say(this.e.r);
+    this.showHint = true;
+    this.render();
+    $('#p-card').classList.add('good');
+    $('#p-mark').innerHTML = used ? '<path d="M40 8 L74 68 L6 68 Z"/>' : '<ellipse cx="40" cy="40" rx="33" ry="29" transform="rotate(-12 40 40)"/>';
+    clearTimeout(this.tm);
+    this.tm = setTimeout(() => {
+      if (UI.cur !== 'practice') return;
+      this.i++;
+      if (this.i >= this.words.length) this.finish(); else this.load();
+    }, 750);
+  },
+  rec(kind) {
+    let L = this.log.get(this.e.id);
+    if (!L) this.log.set(this.e.id, (L = { e: this.e, c: 0, g: 0, m: 0, h: 0 }));
+    L[kind]++;
+    Stats.bump(this.e, kind);
+  },
+  tick() {
+    if (!this.m) return;
+    if (!this.showHint && !this.locked && this.cfg.furigana === 'delay' && !this.m.typed && performance.now() - this.wStart > 4000) this.reveal();
+    const secs = this.t0 ? Math.floor(((this.tEnd || performance.now()) - this.t0) / 1000) : 0;
+    if (secs !== this.lastSecs) { this.lastSecs = secs; $('#p-time').textContent = `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`; }
+  },
+  render() {
+    const e = this.e, m = this.m, cfg = this.cfg;
+    const kanaOnly = !hasKanji(e.w), p = m.pos, hint = this.showHint;
+    const prog = (text) => `<span class="done">${esc(text.slice(0, p))}</span>${esc(text.slice(p))}`;
+    const readingShown = hint || (cfg.qmode === 'read' && kanaOnly);
+    $('#p-count').textContent = `${this.i + 1}/${this.words.length}`;
+    $('#p-bar').style.width = `${(this.i / this.words.length) * 100}%`;
+    const tot = this.keysOk + this.keysMiss;
+    $('#p-acc').textContent = `${tot ? Math.round((this.keysOk / tot) * 100) : 100}%`;
+    $('#p-furi').innerHTML = hint && !kanaOnly ? prog(e.r) : '';
+    if (cfg.qmode === 'mean') {
+      $('#p-prompt').textContent = e.m;
+      $('#p-word').innerHTML = hint ? (kanaOnly ? prog(e.w) : esc(e.w)) : '';
+      $('#p-mean').textContent = '';
+    } else {
+      $('#p-prompt').textContent = '';
+      $('#p-word').innerHTML = kanaOnly ? prog(e.w) : esc(e.w);
+      $('#p-mean').textContent = cfg.meaning ? e.m : '';
+    }
+    let line = '';
+    if (cfg.input === 'romaji') {
+      if (readingShown && cfg.guide) {
+        const g = m.guide();
+        line = `<span class="done">${esc(m.typed)}</span><span class="next">${esc(g.slice(0, 1))}</span>${esc(g.slice(1))}`;
+      } else line = `<span class="done">${esc(m.typed)}</span><span class="caret">_</span>`;
+    } else if (!readingShown) line = `<span class="done">${esc(m.typedKana())}</span><span class="caret">_</span>`;
+    $('#p-roma').innerHTML = line;
+    const nc = m.nextChar();
+    if (readingShown && nc && !this.locked) {
+      if (cfg.input === 'kana') { const k = KANA_TO_KEY[nc]; KB.highlight(k && k.code, k && k.shift); }
+      else KB.highlight(codeForRomaji(nc), false);
+    } else KB.highlight(null);
+    $('#p-help').innerHTML = hint ? '<kbd>Esc</kbd> やめる Quit' : '<kbd>Space</kbd> ヒント Hint · <kbd>Esc</kbd> やめる Quit';
+  },
+  finish() {
+    this.tEnd = performance.now();
+    const time = this.t0 ? (this.tEnd - this.t0) / 1000 : 0;
+    const tot = this.keysOk + this.keysMiss;
+    const r = {
+      mode: 'practice', kind: 'clear', score: 0, destroyed: this.done, hits: 0,
+      acc: tot ? this.keysOk / tot : 1, kpm: time > 1 ? (this.keysOk / time) * 60 : 0,
+      maxCombo: 0, noHint: this.noHint, log: [...this.log.values()],
+      cfg: Object.assign({ label: this.o.label, lv: this.o.lv, review: this.o.review }, this.cfg), time,
+    };
+    this.m = null;
+    UI.showResult(r);
+  },
+  quit() {
+    clearTimeout(this.tm);
+    Stats.save();
+    this.m = null;
+    Speech.stop();
+    if (this.done > 0) { this.tEnd = performance.now(); this.words = this.words.slice(0, this.done); this.m = null; this.finishPartial(); }
+    else UI.toMenu();
+  },
+  finishPartial() {
+    const time = this.t0 ? (this.tEnd - this.t0) / 1000 : 0;
+    const tot = this.keysOk + this.keysMiss;
+    UI.showResult({
+      mode: 'practice', kind: 'clear', score: 0, destroyed: this.done, hits: 0,
+      acc: tot ? this.keysOk / tot : 1, kpm: time > 1 ? (this.keysOk / time) * 60 : 0,
+      maxCombo: 0, noHint: this.noHint, log: [...this.log.values()],
+      cfg: Object.assign({ label: this.o.label, lv: this.o.lv, review: this.o.review }, this.cfg), time,
+    });
+  },
+};
+
+/* ---------------- starting runs ---------------- */
+function labelFor(lv) { const L = levelOf(lv); return L ? `${L.tag} ${L.name}` : 'にがて単語'; }
+function pickBossWords(lv, pool, review) {
+  const byLen = shuffle(pool.slice()).sort((a, b) => b.r.length - a.r.length);
+  const out = shuffle(byLen.slice(0, Math.min(8, byLen.length))).slice(0, 3);
+  while (out.length < 3) out.push(pick(pool));
+  if (!review && ['N3', 'N2', 'N1'].includes(lv)) out[2] = pick(VOCAB.yoji.filter((y) => lv !== 'N3' || y.common));
+  return out;
+}
+function startMeteor(lv, pool) {
+  const review = !!pool;
+  const src = pool || VOCAB[lv];
+  const n = review ? Math.min(30, src.length) : 30;
+  const words = pickWords(src, n);
+  const rest = src.filter((e) => !words.includes(e));
+  const bossWords = pickBossWords(lv, rest.length >= 3 ? rest : src, review);
+  const L = levelOf(lv);
+  const label = labelFor(lv);
+  const cfg = {
+    words, bossWords, count: n, lv, label, review, demo: false, mult: L ? L.mult : 1.3,
+    input: settings.input, qmode: settings.qmode, furigana: settings.furigana, meaning: settings.meaning, guide: settings.guide, diff: settings.diff,
+    subtitle: `${label} · ${settings.qmode === 'read' ? '漢字→よみ' : '英語→ことば'} · ${settings.input === 'kana' ? 'かな入力' : 'ローマ字'}`,
+  };
+  UI.last = { kind: 'meteor', lv, pool };
+  preloadFonts(words.concat(bossWords));
+  Speech.stop();
+  Game.start(cfg);
+  UI.show('game');
+  Music.stop();
+  Music.start('calm');
+}
+function startPractice(lv, pool) {
+  const review = !!pool;
+  const src = pool || VOCAB[lv];
+  const words = review ? shuffle(src.slice()).slice(0, 20) : pickWords(src, Math.min(20, src.length));
+  UI.last = { kind: 'practice', lv, pool };
+  preloadFonts(words);
+  Speech.stop(); Music.stop();
+  Practice.start({ words, label: labelFor(lv), lv, review });
+}
+
+const Game = new MeteorGame();
+const Demo = new MeteorGame();
+function startDemo() {
+  // the title menu sits on the left, so the attract demo keeps its meteors on the right half
+  Demo.start({ words: shuffle(VOCAB.N5.slice()), bossWords: [], lanes: [720, 850, 980, 1110], input: 'romaji', qmode: 'read', furigana: 'always', meaning: true, guide: true, diff: 'normal', demo: true, mult: 1, subtitle: '' });
+}
+
+/* ---------------- screens ---------------- */
+const UI = {
+  cur: null, mode: 'meteor', level: Store.get('level', 'N5'), wordTab: 'N5', last: null, reviewWords: [],
+
+  show(id) {
+    for (const s of $$('.screen')) s.hidden = s.id !== 'scr-' + id;
+    this.cur = id;
+    $('#pause-btn').hidden = id !== 'game';
+    const ae = document.activeElement;
+    if (ae && ae !== document.body && ae.blur) ae.blur();
+    if (id === 'title') { this.updateBadges(); this.updateStatus(); }
+    const focusEl = {
+      title: '#scr-title .mi', select: '#levels .lv[aria-checked="true"]', pause: '#scr-pause .btn.primary',
+      result: '#scr-result .btn.primary', weak: '#scr-weak .back', words: '#scr-words .back', settings: '#scr-settings .back', howto: '#scr-howto .back',
+    }[id];
+    if (focusEl) { const el = $(focusEl); if (el) el.focus({ preventScroll: true }); }
+  },
+  back() { this.show('title'); },
+  act(name) {
+    switch (name) {
+      case 'meteor': case 'practice': this.openSelect(name); break;
+      case 'weak': this.renderWeak(); this.show('weak'); break;
+      case 'words': this.renderWords(); this.show('words'); break;
+      case 'settings': this.show('settings'); break;
+      case 'howto': this.show('howto'); break;
+      case 'weak-meteor': { const w = weakWords(); if (w.length) startMeteor('weak', w.slice(0, 40)); break; }
+      case 'weak-practice': { const w = weakWords(); if (w.length) startPractice('weak', w.slice(0, 40)); break; }
+      case 'practice-quit': Practice.quit(); break;
+      case 'resume': this.resume(); break;
+      case 'retry': this.retry(); break;
+      case 'menu': this.toMenu(); break;
+      case 'review-missed': if (this.reviewWords.length) startPractice('weak', this.reviewWords); break;
+      default: break;
+    }
+  },
+  openSelect(mode) {
+    this.mode = mode;
+    $('#sel-title').innerHTML = mode === 'meteor' ? 'メテオ迎撃 <small>Meteor Defense</small>' : 'れんしゅう <small>Practice · 20 words</small>';
+    const keys = mode === 'meteor' ? ['qmode', 'input', 'furigana', 'diff'] : ['qmode', 'input', 'furigana', 'kbd'];
+    $('#sel-opts').innerHTML = keys.map((k) => optHTML(k, 'sel')).join('');
+    syncSegs();
+    $('#launch').innerHTML = mode === 'meteor' ? '<span>発進</span><small>LAUNCH ⏎</small>' : '<span>はじめる</span><small>START ⏎</small>';
+    this.renderLevels();
+    this.show('select');
+  },
+  renderLevels() {
+    $('#levels').innerHTML = LEVEL_INFO.map((L) => {
+      const words = VOCAB[L.id];
+      const mastered = words.filter((e) => Stats.mastered(e.id)).length;
+      const best = Best.get(L.id);
+      const meta = `${words.length}語 · 覚えた ${mastered}${this.mode === 'meteor' ? ` · BEST ${best ? fmt(best) : '—'}` : ''}`;
+      return `<button type="button" class="lv" role="radio" aria-checked="${L.id === this.level}" data-lv="${L.id}">` +
+        `<span class="lv-tag">${L.tag}</span><span class="lv-name">${L.name}<small>${L.en}</small></span>` +
+        `<span class="lv-meta">${meta}</span><span class="lv-bar" aria-hidden="true"><i style="width:${((mastered / words.length) * 100).toFixed(1)}%"></i></span></button>`;
+    }).join('');
+  },
+  selectLevel(lv, focus) {
+    this.level = lv; Store.set('level', lv);
+    for (const b of $$('#levels .lv')) b.setAttribute('aria-checked', String(b.dataset.lv === lv));
+    if (focus) { const el = $(`#levels .lv[data-lv="${lv}"]`); if (el) el.focus({ preventScroll: false }); }
+  },
+  launch() { if (this.mode === 'meteor') startMeteor(this.level); else startPractice(this.level); },
+  pause() {
+    if (this.cur !== 'game' || !Game.active || Game.state === 'end') return;
+    Game.paused = true;
+    Music.stop(); Speech.stop();
+    this.show('pause');
+  },
+  resume() {
+    if (!Game.active) { this.toMenu(); return; }
+    Game.paused = false;
+    this.show('game');
+    Music.start(Game.boss || Game.pendingBoss ? 'boss' : 'calm');
+  },
+  retry() {
+    const L = this.last;
+    Game.active = false; Game.paused = false;
+    Music.stop(); Speech.stop();
+    if (!L) { this.toMenu(); return; }
+    if (L.kind === 'meteor') startMeteor(L.lv, L.pool); else startPractice(L.lv, L.pool);
+  },
+  toMenu() {
+    Game.active = false; Game.paused = false;
+    Music.stop(); Speech.stop(); Stats.save();
+    clearTimeout(Practice.tm); Practice.m = null;
+    this.show('title');
+  },
+  updateBadges() {
+    const n = weakWords().length, b = $('#weak-badge');
+    b.textContent = n;
+    b.toggleAttribute('data-zero', n === 0);
+  },
+  updateStatus() {
+    const t = { romaji: 'ローマ字', kana: 'かな(JIS)' }[settings.input];
+    const f = { always: 'いつも', delay: 'あとから', off: 'なし' }[settings.furigana];
+    const d = { easy: 'ゆっくり', normal: 'ふつう', hard: 'はやい' }[settings.diff];
+    $('#title-status').textContent = `入力 ${t} · ふりがな ${f} · スピード ${d} · ${ALL_WORDS.length}語`;
+  },
+  renderWeak() {
+    const list = weakWords();
+    $('#weak-list').innerHTML = list.length
+      ? list.slice(0, 80).map((e) => { const s = Stats.get(e.id); return wordRow(e, `<span class="wr-tag hit">×${s.h} △${s.g} ○${s.c}</span>`); }).join('')
+      : '<li class="empty">まだありません。ミッションで当たった単語がここに集まります。<span class="en">Nothing yet. Words you miss in a mission will collect here.</span></li>';
+    for (const b of $$('#weak-actions button')) b.disabled = !list.length;
+  },
+  renderWords() {
+    const tabs = LEVEL_INFO.map((L) => [L.id, L.tag]).concat([['yoji', '四字熟語'], ['weak', 'にがて']]);
+    $('#word-tabs').innerHTML = tabs.map(([id, t]) => `<button type="button" role="tab" data-tab="${id}" aria-selected="${id === this.wordTab}">${t}</button>`).join('');
+    const q = $('#word-search').value.trim().toLowerCase();
+    let list = this.wordTab === 'weak' ? weakWords() : VOCAB[this.wordTab];
+    if (q) {
+      const qh = toHira(q);
+      list = list.filter((e) => e.w.includes(q) || toHira(e.r).includes(qh) || e.m.toLowerCase().includes(q) || romajiOf(e).includes(q));
+    }
+    $('#word-count').textContent = `${list.length}語${q ? ` · 「${q}」` : ''}`;
+    $('#word-tbody').innerHTML = list.map((e) => {
+      const s = Stats.get(e.id), seen = Stats.seen(e.id) || s.m > 0;
+      const rec = seen ? `<span class="good">○${s.c}</span> △${s.g} <span class="${s.h ? 'weak' : ''}">×${s.h}</span>` : '—';
+      return `<tr><td><button class="say" type="button" data-say="${esc(e.id)}" aria-label="読み上げ ${esc(e.w)}">${SPK}</button></td>` +
+        `<td class="w">${esc(e.w)}</td><td class="r">${hasKanji(e.w) ? esc(e.r) : ''}</td><td class="ro">${esc(romajiOf(e))}</td>` +
+        `<td class="m">${esc(e.m)}</td><td class="rec">${rec}</td></tr>`;
+    }).join('') || '<tr><td colspan="6" class="empty">見つかりません。 No matching words.</td></tr>';
+  },
+  showResult(r) {
+    Stats.save();
+    const cfg = r.cfg, meteor = r.mode === 'meteor';
+    const total = r.destroyed + r.hits;
+    const clearRate = total ? r.destroyed / total : 1;
+    const noHintRate = cfg.furigana === 'always' ? 0.6 : r.destroyed ? r.noHint / r.destroyed : 0;
+    let p = clearRate * 55 + r.acc * 30 + noHintRate * 15;
+    if (r.kind === 'over') p = Math.min(p, 64);
+    const G = [
+      [92, '秀', 'Excellent', 'すばらしい！ほとんどヒントなしで打てました。', 'Outstanding: almost no hints needed.'],
+      [80, '優', 'Very good', 'よくできました。この調子で次のレベルへ。', 'Great work. You are ready for more.'],
+      [68, '良', 'Good', 'いい調子です。下の単語をふくしゅうしよう。', 'Good. Review the words below.'],
+      [55, '可', 'Pass', 'もう少し。ふりがな「いつも」やスピード「ゆっくり」でも練習できます。', 'Almost. Try Always furigana or Easy speed.'],
+      [-1, '不可', 'Try again', 'まずは「れんしゅう」で単語を覚えよう。', 'Start with Practice to learn these words first.'],
+    ];
+    const g = G.find((x) => p >= x[0]);
+    const st = $('#r-stamp');
+    st.textContent = g[1];
+    st.classList.toggle('two', g[1].length > 1);
+    st.style.animation = 'none'; void st.offsetWidth; st.style.animation = '';
+    $('#r-grade-en').textContent = g[2];
+    const heads = meteor ? (r.kind === 'over' ? ['SHIELD DOWN', 'シールド崩壊'] : ['MISSION COMPLETE', 'ミッション達成']) : ['PRACTICE COMPLETE', 'れんしゅう完了'];
+    $('#r-eyebrow').textContent = `${heads[0]} · ${cfg.label || labelFor(cfg.lv)}`;
+    $('#r-title').textContent = heads[1];
+    $('#r-msg').innerHTML = `${esc(g[3])}<span class="en">${esc(g[4])}</span>`;
+    const stat = (v, label, cls = '', extra = '') => `<div class="stat"><b class="${cls}">${v}</b><span>${label}</span>${extra}</div>`;
+    const pct = (x) => `${Math.round(x * 100)}%`;
+    let html = '';
+    if (meteor) {
+      const newBest = !cfg.review && Best.put(cfg.lv, cfg, r.score);
+      html += stat(fmt(r.score), 'スコア Score', 'gold', newBest ? '<em>NEW BEST</em>' : '');
+      html += stat(`${r.destroyed}/${total}`, '撃墜 Destroyed');
+      html += stat(pct(r.acc), '正確さ Accuracy');
+      html += stat(Math.round(r.kpm), '速さ Keys/min');
+      html += stat(r.maxCombo, '最大コンボ Max combo');
+      if (cfg.furigana !== 'always') html += stat(`${r.noHint}/${r.destroyed}`, 'ヒントなし No hint');
+    } else {
+      html += stat(r.destroyed, '単語 Words');
+      html += stat(pct(r.acc), '正確さ Accuracy');
+      html += stat(Math.round(r.kpm), '速さ Keys/min');
+      if (cfg.furigana !== 'always') html += stat(`${r.noHint}/${r.destroyed}`, 'ヒントなし No hint');
+      html += stat(`${Math.floor(r.time / 60)}:${String(Math.round(r.time % 60)).padStart(2, '0')}`, '時間 Time');
+    }
+    $('#r-stats').innerHTML = html;
+    const review = r.log.filter((L) => L.h || L.g || L.m).sort((a, b) => b.h - a.h || b.g - a.g || b.m - a.m);
+    const learned = r.log.filter((L) => L.c && !L.h && !L.g).length;
+    this.reviewWords = review.map((L) => L.e);
+    $('#r-review-h').innerHTML = `ふくしゅう <small>Review these words · ${review.length}語 / ヒントなしで正解 ${learned}語</small>`;
+    $('#r-list').innerHTML = review.length
+      ? review.map((L) => {
+        const tag = L.h ? '<span class="wr-tag hit">× 当たった Hit</span>' : L.g ? '<span class="wr-tag hint">△ ヒント Hint</span>' : `<span class="wr-tag miss">ミス ${L.m} Typos</span>`;
+        return wordRow(L.e, tag);
+      }).join('')
+      : '<li class="empty">ふくしゅうする単語はありません。全部ヒントなしで正解！<span class="en">Nothing to review: every word right without a hint.</span></li>';
+    $('#r-review-btn').disabled = !review.length;
+    this.show('result');
+    setTimeout(() => Sound.play('stamp'), 120);
+  },
+};
+
+function wordRow(e, tag) {
+  return `<li class="wr"><button class="say" type="button" data-say="${esc(e.id)}" aria-label="読み上げ ${esc(e.w)}">${SPK}</button>` +
+    `<span class="wr-w">${esc(e.w)}</span><span class="wr-r">${hasKanji(e.w) ? esc(e.r) : ''}<i>${esc(romajiOf(e))}</i></span>` +
+    `<span class="wr-m">${esc(e.m)}</span>${tag || ''}</li>`;
+}
+
+/* ---------------- keyboard ---------------- */
+function onGameKey(e) {
+  if (e.key === 'Escape') { e.preventDefault(); UI.pause(); return; }
+  e.preventDefault();
+  if (e.repeat || Game.paused || !Game.active) return;
+  if (e.code === 'Space' || e.key === ' ') { Game.hint(); return; }
+  if (e.key === 'Backspace') { Game.release(); return; }
+  const tok = Game.cfg.input === 'kana' ? kanaToken(e) : romajiToken(e);
+  if (tok) Game.key(tok);
+}
+function onPracticeKey(e) {
+  if (e.key === 'Escape') { e.preventDefault(); Practice.quit(); return; }
+  if (e.key === 'Tab' || (e.key === 'Enter' && e.target.closest && e.target.closest('button'))) return;
+  e.preventDefault();
+  if (e.repeat) return;
+  if (e.code === 'Space' || e.key === ' ') { Practice.hint(); return; }
+  const tok = Practice.cfg.input === 'kana' ? kanaToken(e) : romajiToken(e);
+  if (tok) Practice.key(tok);
+}
+function onMenuKey(e) {
+  const inField = e.target && e.target.matches && e.target.matches('input, textarea, select');
+  const onButton = e.target && e.target.closest && e.target.closest('button');
+  if (e.key === 'Escape') {
+    if (inField) { e.target.blur(); return; }
+    if (UI.cur === 'pause') UI.resume();
+    else if (UI.cur === 'result') UI.toMenu();
+    else if (UI.cur !== 'title') UI.back();
+    return;
+  }
+  if (inField) return;
+  if (UI.cur === 'title') {
+    const items = $$('#scr-title .mi');
+    const n = parseInt(e.key, 10);
+    if (n >= 1 && n <= items.length) { e.preventDefault(); items[n - 1].click(); return; }
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      const i = items.indexOf(document.activeElement);
+      const j = i < 0 ? 0 : (i + (e.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length;
+      items[j].focus();
+    }
+  } else if (UI.cur === 'select') {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      if (onButton && !onButton.classList.contains('lv')) return;
+      e.preventDefault();
+      const ids = LEVEL_INFO.map((L) => L.id);
+      const i = ids.indexOf(UI.level);
+      UI.selectLevel(ids[clamp(i + (e.key === 'ArrowDown' ? 1 : -1), 0, ids.length - 1)], true);
+      Sound.play('select');
+    } else if (e.key === 'Enter' && !onButton) { e.preventDefault(); UI.launch(); }
+  } else if (UI.cur === 'result') {
+    if (e.key === 'Enter' && !onButton) { e.preventDefault(); UI.retry(); }
+  }
+}
+
+/* ---------------- canvas & loop ---------------- */
+const cv = $('#cv');
+const ctx = cv.getContext('2d');
+let DPR = 1, VS = 1, VX = 0, VY = 0, lastT = 0;
+function resize() {
+  DPR = Math.min(2, window.devicePixelRatio || 1);
+  const w = window.innerWidth, h = window.innerHeight;
+  cv.width = Math.round(w * DPR); cv.height = Math.round(h * DPR);
+  VS = Math.min(w / W, h / H); VX = (w - W * VS) / 2; VY = (h - H * VS) / 2;
+  Sky.resize(w, h);
+}
+function frame(now) {
+  const dt = lastT ? Math.min(0.05, Math.max(0, (now - lastT) / 1000)) : 0;
+  lastT = now;
+  Sky.update(dt);
+  const inGame = (UI.cur === 'game' || UI.cur === 'pause') && Game.active;
+  if (inGame && !Game.paused) Game.update(dt);
+  else if (!inGame && UI.cur !== 'practice') Demo.update(dt);
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  Sky.draw(ctx);
+  if (UI.cur !== 'practice') {
+    const g = inGame ? Game : Demo;
+    if (g.active) { ctx.save(); ctx.translate(VX, VY); ctx.scale(VS, VS); g.draw(ctx); ctx.restore(); }
+  } else Practice.tick();
+  requestAnimationFrame(frame);
+}
+
+/* ---------------- boot ---------------- */
+let booted = false;
+function boot(data) {
+  if (booted) return;
+  booted = true;
+  data = data || {};
+  if (data.settings) settings = Object.assign({}, DEFAULTS, data.settings);
+  if (data.stats && !Object.keys(Stats.data).length) Stats.data = data.stats;
+  if (data.best && !Object.keys(Best.data).length) Best.data = data.best;
+  document.documentElement.lang = 'ja';
+  readColors();
+  resize();
+  window.addEventListener('resize', resize);
+  Speech.init();
+  $('#settings-opts').innerHTML = ['input', 'qmode', 'furigana', 'diff', 'meaning', 'guide', 'kbd', 'voice', 'sfx', 'bgm'].map((k) => optHTML(k, 'set')).join('');
+  syncSegs();
+
+  document.addEventListener('click', (e) => {
+    Sound.init();
+    const seg = e.target.closest('.seg[data-key] button');
+    if (seg) {
+      const k = seg.parentElement.dataset.key;
+      settings[k] = JSON.parse(seg.dataset.v);
+      saveSettings(); syncSegs();
+      if (k === 'bgm' && !settings.bgm) Music.stop();
+      if (k === 'qmode' || k === 'diff') UI.renderLevels();
+      Sound.play('select');
+      return;
+    }
+    const sayBtn = e.target.closest('[data-say]');
+    if (sayBtn) { const en = ENTRY.get(sayBtn.dataset.say); if (en) say(en); return; }
+    const a = e.target.closest('[data-act]');
+    if (a) { UI.act(a.dataset.act); return; }
+    if (e.target.closest('[data-back]')) { UI.back(); return; }
+    const lv = e.target.closest('#levels .lv');
+    if (lv) {
+      if (UI.level === lv.dataset.lv) UI.launch();
+      else { UI.selectLevel(lv.dataset.lv, true); Sound.play('select'); }
+      return;
+    }
+    const tab = e.target.closest('#word-tabs [data-tab]');
+    if (tab) { UI.wordTab = tab.dataset.tab; UI.renderWords(); $(`#word-tabs [data-tab="${UI.wordTab}"]`).focus(); }
+  });
+  $('#launch').addEventListener('click', () => UI.launch());
+  $('#word-search').addEventListener('input', () => UI.renderWords());
+  $('#pause-btn').addEventListener('click', () => UI.pause());
+  $('#reset-btn').addEventListener('click', (e) => {
+    const b = e.currentTarget;
+    if (!b.classList.contains('armed')) {
+      b.classList.add('armed');
+      b.innerHTML = 'もう一度押すとリセット <small>Click again to confirm</small>';
+      clearTimeout(b.tm);
+      b.tm = setTimeout(() => { b.classList.remove('armed'); b.innerHTML = 'リセット <small>Reset</small>'; }, 4000);
+      return;
+    }
+    clearTimeout(b.tm);
+    Stats.reset();
+    Best.data = {}; Store.del('best');
+    RomajiPrefs.map = {}; RomajiPrefs.ver++; Store.del('rpref');
+    romajiCache.clear();
+    b.classList.remove('armed'); b.innerHTML = 'リセット <small>Reset</small>';
+    toast('記録をリセットしました。 Records cleared.');
+  });
+  window.addEventListener('keydown', (e) => {
+    Sound.init();
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    if (UI.cur === 'game') onGameKey(e);
+    else if (UI.cur === 'practice') onPracticeKey(e);
+    else onMenuKey(e);
+  });
+  window.addEventListener('blur', () => UI.pause());
+  document.addEventListener('visibilitychange', () => { if (document.hidden) UI.pause(); });
+  setInterval(() => Stats.save(), 8000);
+
+  Game.onEnd = (r) => { Music.stop(); UI.showResult(r); };
+  if (document.fonts && document.fonts.load) {
+    document.fonts.load('80px "Dela Gothic One"', 'WAVE 0123456789 WARNING MISSION COMPLETE SHIELD DOWN ことばメテオ発進').catch(() => {});
+    document.fonts.load('700 30px "Chakra Petch"', '0123456789 SCORE COMBO SHIELD ACC KPM GIANT METEOR abcdefghijklmnopqrstuvwxyz-').catch(() => {});
+    preloadFonts(VOCAB.N5);
+  }
+  startDemo();
+  UI.show('title');
+  requestAnimationFrame(frame);
+}
+
+try {
+  if (window.claude && window.claude.hot && typeof window.claude.hot.snapshot === 'function') {
+    window.claude.hot.snapshot(() => ({ settings, stats: Stats.data, best: Best.data }));
+  }
+} catch (e) { /* not in a viewer */ }
+{
+  const hot = window.claude && window.claude.hot;
+  if (hot && typeof hot.ready === 'function') hot.ready(boot);
+  else boot((hot && hot.data) || {});
+}
+
+/* test hook */
+window.KM = { Game, Demo, Practice, UI, VOCAB, Stats, makeMatcher, get settings() { return settings; } };
+</script>
+</body>
+</html>
